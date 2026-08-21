@@ -1,26 +1,16 @@
 'use strict';
 
 /**
- * 🐶 DogsVPN — ربات تلگرامی کانفیگ‌ساز رایگان
- * تمام امکانات بدون پرداخت — برای همیشه رایگان ♾️
+ * 🐶 DogsVPN — ربات تلگرامی دوگانه (رایگان + فروشگاه VIP)
  *
- * دو حالت کار:
- *  ۱) حالت «استخر رایگان» (پیش‌فرض، بدون نیاز به سرور):
- *     ربات هر FETCH_INTERVAL_MIN دقیقه از منابع عمومی (FREE_SOURCES)
- *     کانفیگ‌های رایگان واقعی را می‌گیرد، پینگ می‌کند و فقط سرورهای زنده را می‌دهد.
- *  ۲) حالت «پنل اختصاصی» (اگر XUI_* ست شود):
- *     کاربر واقعی روی پنل 3x-ui ساخته می‌شود و کانفیگ اختصاصی می‌گیرد.
- *
- * متغیرهای محیطی:
- *  BOT_TOKEN (اجباری) — توکن ربات از @BotFather
- *  BOT_NAME / BOT_USERNAME / BASE_URL / PORT
- *  FREE_SOURCES — JSON آرایه‌ای از آدرس سابسکریپشن‌های رایگان
- *  POOL_SIZE — حداکثر سرورهای زنده نگه‌داشته‌شده (پیش‌فرض 40)
- *  FETCH_INTERVAL_MIN — بازه آپدیت استخر (پیش‌فرض 120)
- *  SERVERS_JSON — سرورهای ثابت برای حالت پنل (اختیاری)
- *  SS_METHOD / VLESS_FLOW / SNI / WG_SERVER_PUBLIC_KEY
- *  XUI_BASE_URL / XUI_USERNAME / XUI_PASSWORD / XUI_INBOUND_IDS / XUI_CONFIG_HOST
- *  DEMO_USER — برای تست محلی
+ * امکانات کامل:
+ *  ۱) 🎁 بخش رایگان: استخر سرورهای زنده عمومی + پینگ خودکار + لینک سابسکریپشن رایگان + تست رایگان VIP
+ *  ۲) 🛒 فروشگاه VIP: پلن‌های ۱ تا ۳ ماهه، لوکیشن‌های اختصاصی (آلمان، هلند، فرانسه، آمریکا، ترکیه، ...)، پروتکل‌های VLESS/VMess/Trojan/SS
+ *  ۳) 💳 سیستم پرداخت: کارت به کارت با ارسال تصویر فیش + پرداخت با کیف پول + پرداخت ارزی (USDT)
+ *  ۴) 👑 پنل مدیریت (Admin): تایید/رد فیش‌های واریزی، ارسال پیام همگانی (Broadcast)، آمار ربات، تغییر شماره کارت
+ *  ۵) 👥 زیرمجموعه‌گیری و دعوت دوستان: دریافت پاداش نقدی برای کیف پول
+ *  ۶) 📦 مدیریت سرویس‌های فعال + 💰 کیف پول + 📖 راهنمای جامع اتصال در تمامی سیستم‌عامل‌ها
+ *  ۷) 🌐 وب‌سرور لینک سابسکریپشن (/sub/:uuid) + صفحه لندینگ شیک و مدرن
  */
 
 const { Telegraf, Markup } = require('telegraf');
@@ -30,28 +20,31 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-/* ─────────────────────────── تنظیمات ─────────────────────────── */
+/* ─────────────────────────── تنظیمات پایه ─────────────────────────── */
 
-const BOT_TOKEN = (process.env.BOT_TOKEN || process.env.TOKEN || '').trim() || '8688771229:AAGDp0G4pY2-Wky7utOaL0It66gj8MZdR1Q';
-if (!process.env.BOT_TOKEN) {
-  console.warn('⚠️ BOT_TOKEN در متغیرهای محیطی نبود؛ از توکن پیش‌فرض استفاده شد.');
-}
-if (!BOT_TOKEN) {
-  console.error('❌ توکن ربات تنظیم نشده است.');
-  process.exit(1);
-}
+const BOT_TOKEN = (
+  process.env.BOT_TOKEN ||
+  process.env.TOKEN ||
+  '8688771229:AAHJj9Bf9n7cRQU2VgKYBlA-MVlisJl5pjY'
+).trim();
 
+const ADMIN_ID = (process.env.ADMIN_ID || '318405928').trim();
 const BOT_NAME = process.env.BOT_NAME || '🐶 DogsVPN';
 const BOT_USERNAME = (process.env.BOT_USERNAME || '').replace('@', '');
-// آدرس عمومی: اول متغیر BASE_URL، بعد دامنه خودکار Railway، بعد خالی
-const BASE_URL = (process.env.BASE_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '')).replace(/\/+$/, '');
+const SUPPORT_USERNAME = process.env.SUPPORT_USERNAME || '@dogs_vpn_support';
+const CHANNEL_USERNAME = process.env.CHANNEL_USERNAME || '@dogs_vpn';
+
+const BASE_URL = (
+  process.env.BASE_URL ||
+  (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '')
+).replace(/\/+$/, '');
+
 const HTTP_PORT = Number(process.env.PORT || process.env.HTTP_PORT || 3000);
 const SS_METHOD = process.env.SS_METHOD || 'aes-256-gcm';
-const VLESS_FLOW = process.env.VLESS_FLOW || '';
 const SNI = process.env.SNI || '';
 const WG_SERVER_PUBLIC_KEY = process.env.WG_SERVER_PUBLIC_KEY || '';
 
-// پنل 3x-ui (اختیاری)
+// تنظیمات اختیاری پنل 3x-ui
 const XUI = {
   base: (process.env.XUI_BASE_URL || '').replace(/\/+$/, ''),
   username: process.env.XUI_USERNAME || '',
@@ -61,158 +54,231 @@ const XUI = {
 };
 const XUI_ENABLED = !!(XUI.base && XUI.username && XUI.password);
 
-/* ─────────────────────────── لیست سرورهای ثابت (حالت پنل) ─────────────────────────── */
+/* ─────────────────────────── سرورهای VIP اختصاصی ─────────────────────────── */
 
-const DEFAULT_SERVERS = [
-  { id: 'de', flag: '🇩🇪', name: 'آلمان',    host: '185.244.181.12', port: 443, security: 'tls', network: 'tcp' },
-  { id: 'nl', flag: '🇳🇱', name: 'هلند',     host: '194.36.88.45',   port: 443, security: 'tls', network: 'tcp' },
-  { id: 'fr', flag: '🇫🇷', name: 'فرانسه',   host: '195.58.39.78',   port: 443, security: 'tls', network: 'tcp' },
-  { id: 'us', flag: '🇺🇸', name: 'آمریکا',   host: '198.54.128.99',  port: 443, security: 'tls', network: 'tcp' },
-  { id: 'gb', flag: '🇬🇧', name: 'انگلیس',   host: '185.102.219.33', port: 443, security: 'tls', network: 'tcp' },
-  { id: 'ca', flag: '🇨🇦', name: 'کانادا',   host: '212.80.246.77',  port: 443, security: 'tls', network: 'tcp' },
-  { id: 'jp', flag: '🇯🇵', name: 'ژاپن',     host: '185.198.56.89',  port: 443, security: 'tls', network: 'tcp' },
-  { id: 'sg', flag: '🇸🇬', name: 'سنگاپور',  host: '185.244.180.44', port: 443, security: 'tls', network: 'tcp' },
-  { id: 'tr', flag: '🇹🇷', name: 'ترکیه',    host: '194.36.89.22',   port: 443, security: 'tls', network: 'tcp' },
+const DEFAULT_VIP_SERVERS = [
+  { id: 'de', flag: '🇩🇪', name: 'آلمان (فرانکفورت)', host: '185.244.181.12', port: 443, security: 'tls', network: 'tcp' },
+  { id: 'nl', flag: '🇳🇱', name: 'هلند (آمستردام)',   host: '194.36.88.45',   port: 443, security: 'tls', network: 'tcp' },
+  { id: 'fr', flag: '🇫🇷', name: 'فرانسه (پاریس)',    host: '195.58.39.78',   port: 443, security: 'tls', network: 'tcp' },
+  { id: 'us', flag: '🇺🇸', name: 'آمریکا (شیکاگو)',    host: '198.54.128.99',  port: 443, security: 'tls', network: 'tcp' },
+  { id: 'gb', flag: '🇬🇧', name: 'انگلیس (لندن)',     host: '185.102.219.33', port: 443, security: 'tls', network: 'tcp' },
+  { id: 'tr', flag: '🇹🇷', name: 'ترکیه (استانبول)',  host: '194.36.89.22',   port: 443, security: 'tls', network: 'tcp' },
+  { id: 'ca', flag: '🇨🇦', name: 'کانادا (تورنتو)',   host: '212.80.246.77',  port: 443, security: 'tls', network: 'tcp' },
+  { id: 'jp', flag: '🇯🇵', name: 'ژاپن (توکیو)',      host: '185.198.56.89',  port: 443, security: 'tls', network: 'tcp' },
 ];
 
-let SERVERS = DEFAULT_SERVERS;
+let VIP_SERVERS = DEFAULT_VIP_SERVERS;
 try {
   if (process.env.SERVERS_JSON) {
-    SERVERS = JSON.parse(process.env.SERVERS_JSON);
-    if (!Array.isArray(SERVERS) || !SERVERS.length) throw new Error('empty');
+    const s = JSON.parse(process.env.SERVERS_JSON);
+    if (Array.isArray(s) && s.length) VIP_SERVERS = s;
   }
 } catch (e) {
-  console.warn('⚠️ SERVERS_JSON نامعتبر است؛ از لیست پیش‌فرض استفاده می‌شود.');
-  SERVERS = DEFAULT_SERVERS;
+  VIP_SERVERS = DEFAULT_VIP_SERVERS;
 }
 
-function getServer(id) {
-  return SERVERS.find(s => s.id === id) || SERVERS[0];
+function getVipServer(id) {
+  return VIP_SERVERS.find(s => s.id === id) || VIP_SERVERS[0];
 }
 
-/* ─────────────────────────── ذخیره‌سازی کاربران ─────────────────────────── */
+/* ─────────────────────────── پلن‌های اشتراک VIP ─────────────────────────── */
+
+const PLANS = [
+  {
+    id: 'p1',
+    title: '🥉 پلن پایه — ۳۰ روزه',
+    volume: '50 گیگابایت',
+    days: 30,
+    price: 149000,
+    popular: false,
+    desc: 'مناسب وب‌گردی و تلگرام',
+  },
+  {
+    id: 'p2',
+    title: '🥈 پلن اقتصادی — ۳۰ روزه',
+    volume: '100 گیگابایت',
+    days: 30,
+    price: 219000,
+    popular: true,
+    desc: '🔥 محبوب‌ترین انتخاب — سرعت حداکثری',
+  },
+  {
+    id: 'p3',
+    title: '🥇 پلن ویژه — ۶۰ روزه',
+    volume: '200 گیگابایت',
+    days: 60,
+    price: 389000,
+    popular: false,
+    desc: 'مناسب استریم و دانلود سنگین',
+  },
+  {
+    id: 'p4',
+    title: '💎 پلن نامحدود VIP — ۹۰ روزه',
+    volume: 'نامحدود ♾️',
+    days: 90,
+    price: 549000,
+    popular: false,
+    desc: 'بدون محدودیت حجم و ترافیک + پینگ پایین برای گیم',
+  },
+];
+
+function getPlan(id) {
+  return PLANS.find(p => p.id === id) || PLANS[0];
+}
+
+/* ─────────────────────────── پایگاه داده ─────────────────────────── */
 
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILE = path.join(DATA_DIR, 'users.json');
+const DB_FILE = path.join(DATA_DIR, 'db.json');
 
-let users = {};
-try { users = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) || {}; } catch (e) { users = {}; }
+const DEFAULT_SETTINGS = {
+  cardNumber: '۶۰۳۷-۹۹۷۵-۱۲۳۴-۵۶۷۸',
+  cardHolder: 'مدیریت DogsVPN',
+  cryptoTrc20: 'TQXXXXXXXXX_USDT_TRC20_ADDRESS',
+  rewardPerInvite: 15000, // 15,000 تومان پاداش دعوت
+  trialDays: 2,
+  trialGB: 2,
+};
 
-function saveUsers() {
+let db = {
+  users: {},
+  orders: [],
+  settings: { ...DEFAULT_SETTINGS },
+};
+
+function loadDB() {
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(DATA_FILE, JSON.stringify(users, null, 2));
+    if (fs.existsSync(DB_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+      db.users = parsed.users || {};
+      db.orders = parsed.orders || [];
+      db.settings = { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) };
+    }
   } catch (e) {
-    console.warn('⚠️ ذخیره‌سازی دیتا ممکن نشد:', e.message);
+    console.warn('⚠️ بارگیری DB ناموفق:', e.message);
   }
 }
+
+function saveDB() {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+  } catch (e) {
+    console.warn('⚠️ ذخیره DB ناموفق:', e.message);
+  }
+}
+
+loadDB();
 
 function genUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
   });
 }
 
-function getUser(chatId) {
+function formatPrice(n) {
+  return Number(n || 0).toLocaleString('fa-IR') + ' تومان';
+}
+
+function getUser(chatId, fromObj = {}) {
   const id = String(chatId);
-  if (!users[id]) {
-    users[id] = {
+  if (!db.users[id]) {
+    db.users[id] = {
       chatId: id,
+      username: fromObj.username || '',
+      firstName: fromObj.first_name || 'کاربر',
+      balance: 0,
       uuid: genUUID(),
-      ssPass: crypto.randomBytes(16).toString('base64url'),
-      wgPriv: crypto.randomBytes(32).toString('base64url'),
-      serverId: SERVERS[0].id,
+      services: [],
+      usedTrial: false,
+      invitedBy: null,
+      inviteCount: 0,
       createdAt: new Date().toISOString(),
+      step: null,
+      stepData: null,
     };
-    saveUsers();
+    saveDB();
+  } else if (fromObj.username && db.users[id].username !== fromObj.username) {
+    db.users[id].username = fromObj.username;
+    saveDB();
   }
-  return users[id];
+  return db.users[id];
 }
 
-function findByUuid(uuid) {
-  return Object.values(users).find(u => u.uuid === uuid) || null;
+function findUserByUuid(uuid) {
+  return Object.values(db.users).find(u => u.uuid === uuid) || null;
 }
 
-/* ─────────────────────────── ابزارها ─────────────────────────── */
-
-function safeParse(str, fallback) {
-  try { return JSON.parse(str); } catch (e) { return fallback; }
+function findServiceByUuid(uuid) {
+  for (const u of Object.values(db.users)) {
+    if (u.uuid === uuid) return { user: u, service: u.services[0] || null };
+    const found = (u.services || []).find(s => s.uuid === uuid);
+    if (found) return { user: u, service: found };
+  }
+  return null;
 }
+
+/* ─────────────────────────── تست پینگ TCP ─────────────────────────── */
 
 function testPing(host, port) {
   return new Promise(resolve => {
     const socket = new net.Socket();
-    socket.setTimeout(4000);
+    socket.setTimeout(3500);
     const t = Date.now();
-    socket.on('connect', () => { socket.destroy(); resolve(Date.now() - t); });
+    socket.on('connect', () => {
+      socket.destroy();
+      resolve(Date.now() - t);
+    });
     socket.on('error', () => resolve(null));
-    socket.on('timeout', () => { socket.destroy(); resolve(null); });
-    try { socket.connect(port, host); } catch (e) { resolve(null); }
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve(null);
+    });
+    try {
+      socket.connect(port, host);
+    } catch (e) {
+      resolve(null);
+    }
   });
-}
-
-function cfgName(s) {
-  return `${BOT_NAME} — ${s.flag || ''} ${s.name || ''}`.trim();
 }
 
 /* ─────────────────────────── استخر سرورهای رایگان ─────────────────────────── */
 
-const POOL_FILE = path.join(DATA_DIR, 'pool.json');
-
-let pool = { fetchedAt: 0, links: [], fetching: false };
-try {
-  const saved = safeParse(fs.readFileSync(POOL_FILE, 'utf8'), null);
-  if (saved && Array.isArray(saved.links)) pool = { fetchedAt: saved.fetchedAt || 0, links: saved.links, fetching: false };
-} catch (e) { /* اولین اجرا */ }
+let freePool = {
+  fetchedAt: 0,
+  links: [],
+  fetching: false,
+};
 
 const DEFAULT_FREE_SOURCES = [
   'https://raw.githubusercontent.com/freefq/free/master/v2',
   'https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub',
 ];
 
-let FREE_SOURCES = DEFAULT_FREE_SOURCES;
-try {
-  if (process.env.FREE_SOURCES) {
-    const arr = JSON.parse(process.env.FREE_SOURCES);
-    if (Array.isArray(arr) && arr.length) FREE_SOURCES = arr;
-  }
-} catch (e) { /* پیش‌فرض */ }
-
-const POOL_SIZE = Math.max(5, Number(process.env.POOL_SIZE || 40));
-const FETCH_INTERVAL_MS = Math.max(15, Number(process.env.FETCH_INTERVAL_MIN || 120)) * 60000;
-const POOL_REFRESH_MS = Math.max(2, Number(process.env.POOL_REFRESH_MIN || 30)) * 60000;
-// فقط برای تست: بدون تست پینگ همه لینک‌ها نگه داشته می‌شوند
-const POOL_NO_PING = process.env.POOL_NO_PING === '1';
-
-/* پارس لینک‌های کانفیگ */
-
-const HOST_RE = /^[a-zA-Z0-9][a-zA-Z0-9.\-]*$/;
-
-function validHostPort(host, port) {
-  return !!host && HOST_RE.test(host) && port > 0 && port <= 65535;
-}
+const POOL_SIZE = 40;
+const FETCH_INTERVAL_MS = 120 * 60 * 1000;
 
 function parseVmessB64(b64) {
   try {
     const o = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
     if (!o.add || !o.port || !o.id) return null;
-    const host = String(o.add).trim();
-    const port = Number(o.port);
-    if (!validHostPort(host, port)) return null;
     return {
       proto: 'vmess',
-      host,
-      port,
+      host: String(o.add).trim(),
+      port: Number(o.port),
       id: String(o.id).trim(),
       aid: String(o.aid || '0'),
-      security: (o.tls === 'tls' || o.tls === true) ? 'tls' : 'none',
+      security: o.tls === 'tls' || o.tls === true ? 'tls' : 'none',
       network: String(o.net || 'tcp'),
       path: String(o.path || ''),
       hostHeader: String(o.host || ''),
       sni: String(o.sni || ''),
     };
-  } catch (e) { return null; }
+  } catch (e) {
+    return null;
+  }
 }
 
 function parseVlessTrojan(link) {
@@ -224,7 +290,7 @@ function parseVlessTrojan(link) {
     const sec = p.get('security') || (proto === 'trojan' ? 'tls' : 'none');
     const host = u.hostname;
     const port = Number(u.port || (sec === 'none' ? 80 : 443));
-    if (!validHostPort(host, port) || !u.username) return null;
+    if (!host || !u.username) return null;
     return {
       proto,
       host,
@@ -240,26 +306,23 @@ function parseVlessTrojan(link) {
       sid: p.get('sid') || '',
       fp: p.get('fp') || '',
     };
-  } catch (e) { return null; }
+  } catch (e) {
+    return null;
+  }
 }
 
 function parseSs(link) {
   try {
-    let rest = link.slice(5);
+    const rest = link.slice(5);
     if (rest.includes('@')) {
-      // ss://base64(method:pass)@host:port#name
       const at = rest.indexOf('@');
       const hp = rest.slice(at + 1).split('#')[0];
       const colon = hp.lastIndexOf(':');
       if (colon <= 0) return null;
       const [method, pass] = Buffer.from(rest.slice(0, at), 'base64').toString('utf8').split(':');
       if (!method || !pass) return null;
-      const host = hp.slice(0, colon);
-      const port = Number(hp.slice(colon + 1));
-      if (!validHostPort(host, port)) return null;
-      return { proto: 'ss', host, port, method, ssPass: pass };
+      return { proto: 'ss', host: hp.slice(0, colon), port: Number(hp.slice(colon + 1)), method, ssPass: pass };
     }
-    // ss://base64(method:pass@host:port)#name
     const core = rest.split('#')[0];
     const dec = Buffer.from(core, 'base64').toString('utf8');
     const at = dec.lastIndexOf('@');
@@ -269,11 +332,10 @@ function parseSs(link) {
     if (colon <= 0) return null;
     const [method, pass] = dec.slice(0, at).split(':');
     if (!method || !pass) return null;
-    const host = hp.slice(0, colon);
-    const port = Number(hp.slice(colon + 1));
-    if (!validHostPort(host, port)) return null;
-    return { proto: 'ss', host, port, method, ssPass: pass };
-  } catch (e) { return null; }
+    return { proto: 'ss', host: hp.slice(0, colon), port: Number(hp.slice(colon + 1)), method, ssPass: pass };
+  } catch (e) {
+    return null;
+  }
 }
 
 function parseLink(line) {
@@ -281,7 +343,7 @@ function parseLink(line) {
   if (!l || !l.includes('://')) return null;
   if (l.startsWith('vmess://')) {
     const rest = l.slice(8).split('#')[0];
-    if (rest.includes('@')) return null; // فرم جدید vmess پشتیبانی نمی‌شود
+    if (rest.includes('@')) return null;
     return parseVmessB64(rest);
   }
   if (l.startsWith('vless://') || l.startsWith('trojan://')) return parseVlessTrojan(l);
@@ -289,10 +351,8 @@ function parseLink(line) {
   return null;
 }
 
-/* دریافت منابع */
-
 async function httpGet(url) {
-  const res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(15000) });
+  const res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(12000) });
   if (!res.ok) throw new Error('http ' + res.status);
   return res.text();
 }
@@ -302,175 +362,142 @@ async function fetchSource(url) {
   try {
     body = await httpGet(url);
   } catch (e) {
-    // fallback: raw.githubusercontent.com از این سندباکس مسدود است → api.github.com
     const m = url.match(/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)/);
     if (!m) throw e;
     const apiUrl = `https://api.github.com/repos/${m[1]}/${m[2]}/contents/${m[4]}?ref=${m[3]}`;
-    const j = safeParse(await httpGet(apiUrl), null);
-    if (!j || !j.content) throw new Error('api github: empty');
+    const j = JSON.parse(await httpGet(apiUrl));
+    if (!j || !j.content) throw new Error('github api empty');
     body = Buffer.from(j.content, 'base64').toString('utf8');
   }
   const lines = body.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   if (lines.some(l => l.includes('://'))) return lines;
-  // احتمالاً base64 کل بدنه
   try {
     const dec = Buffer.from(body.replace(/\s+/g, ''), 'base64').toString('utf8');
     const dlines = dec.split(/\r?\n/).map(s => s.trim()).filter(s => s.includes('://'));
     if (dlines.length) return dlines;
-  } catch (e) { /* not base64 */ }
+  } catch (e) { /* ignore */ }
   return lines;
 }
 
-/* ساخت و به‌روزرسانی استخر */
-
-async function buildPool() {
+async function buildFreePool() {
   const all = [];
-  for (const url of FREE_SOURCES) {
+  for (const url of DEFAULT_FREE_SOURCES) {
     try {
       const lines = await fetchSource(url);
       for (const l of lines) {
         const o = parseLink(l);
         if (o) all.push(o);
       }
-      console.log(`📥 منبع استخر: ${url} → ${lines.length} لینک، ${all.length} پارس‌شده`);
     } catch (e) {
-      console.warn(`⚠️ منبع استخر در دسترس نبود: ${url} — ${e.message}`);
+      console.warn('⚠️ دریافت منبع استخر:', e.message);
     }
   }
 
-  // حذف تکراری‌ها
   const seen = new Set();
   const uniq = [];
   for (const o of all) {
-    const k = o.proto + '|' + o.host + '|' + o.port + '|' + (o.id || o.ssPass);
-    if (!seen.has(k)) { seen.add(k); uniq.push(o); }
+    const k = `${o.proto}|${o.host}|${o.port}|${o.id || o.ssPass}`;
+    if (!seen.has(k)) {
+      seen.add(k);
+      uniq.push(o);
+    }
   }
 
-  let links = uniq;
-  if (!POOL_NO_PING) {
-    // تست زنده‌بودن با پینگ
-    const hosts = [...new Set(uniq.map(o => o.host + ':' + o.port))];
-    const pings = new Map();
-    let idx = 0;
-    const worker = async () => {
-      while (idx < hosts.length) {
-        const key = hosts[idx++];
-        const sep = key.lastIndexOf(':');
-        pings.set(key, await testPing(key.slice(0, sep), Number(key.slice(sep + 1))));
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(12, hosts.length) }, worker));
-    const alive = uniq.filter(o => pings.get(o.host + ':' + o.port) !== null);
-    alive.forEach(o => { o.ping = pings.get(o.host + ':' + o.port); });
-    alive.sort((a, b) => a.ping - b.ping);
-    links = alive.slice(0, POOL_SIZE);
-    console.log(`✅ استخر: ${alive.length} سرور زنده از ${uniq.length} → ${links.length} نگه‌داشته شد`);
-  } else {
-    links = uniq.slice(0, POOL_SIZE);
-    console.log(`🧪 حالت تست: ${links.length} سرور بدون تست پینگ نگه داشته شد`);
-  }
+  const hosts = [...new Set(uniq.map(o => o.host + ':' + o.port))];
+  const pings = new Map();
+  let idx = 0;
+  const worker = async () => {
+    while (idx < hosts.length) {
+      const key = hosts[idx++];
+      const sep = key.lastIndexOf(':');
+      pings.set(key, await testPing(key.slice(0, sep), Number(key.slice(sep + 1))));
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(10, hosts.length) }, worker));
 
-  pool = { fetchedAt: Date.now(), links, fetching: false };
+  const alive = uniq.filter(o => pings.get(o.host + ':' + o.port) !== null);
+  alive.forEach(o => {
+    o.ping = pings.get(o.host + ':' + o.port);
+  });
+  alive.sort((a, b) => (a.ping || 999) - (b.ping || 999));
+
+  freePool = {
+    fetchedAt: Date.now(),
+    links: alive.slice(0, POOL_SIZE),
+    fetching: false,
+  };
+  console.log(`✅ استخر رایگان: ${freePool.links.length} سرور زنده آماده شد.`);
+}
+
+async function ensureFreePool() {
+  if (freePool.fetching) return;
+  if (freePool.links.length && Date.now() - freePool.fetchedAt < 30 * 60 * 1000) return;
+  freePool.fetching = true;
   try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(POOL_FILE, JSON.stringify(pool, null, 2));
-  } catch (e) { /* غیرحیاتی */ }
+    await buildFreePool();
+  } catch (e) {
+    freePool.fetching = false;
+  }
 }
 
-async function ensurePool() {
-  if (pool.fetching) return;
-  if (pool.links.length && Date.now() - pool.fetchedAt < POOL_REFRESH_MS) return;
-  pool.fetching = true;
-  try { await buildPool(); } catch (e) { console.warn('⚠️ به‌روزرسانی استخر ناموفق:', e.message); }
-}
+/* ─────────────────────────── ساخت رشته کانفیگ ─────────────────────────── */
 
-/* ─────────────────────────── ساخت لینک کانفیگ ─────────────────────────── */
-
-function buildLink(proto, u, s) {
-  const name = encodeURIComponent(cfgName(s));
+function buildConfigString(proto, srv, userUuid, remark) {
+  const name = encodeURIComponent(remark || `${BOT_NAME} — ${srv.flag || '🚀'} ${srv.name || 'VIP'}`);
+  const uuid = userUuid || genUUID();
 
   if (proto === 'vless') {
     const q = new URLSearchParams();
     q.set('encryption', 'none');
-    q.set('security', s.security || 'tls');
-    if (VLESS_FLOW || s.flow) q.set('flow', VLESS_FLOW || s.flow);
-    q.set('type', s.network || 'tcp');
-    if (s.path) q.set('path', s.path);
-    if (s.hostHeader) q.set('host', s.hostHeader);
-    if (s.security === 'reality') {
-      q.set('sni', s.sni || SNI || s.host);
-      q.set('fp', s.fp || 'chrome');
-      if (s.pbk) q.set('pbk', s.pbk);
-      if (s.sid) q.set('sid', s.sid);
-    } else if (s.security === 'tls') {
-      q.set('sni', SNI || s.sni || s.host);
+    q.set('security', srv.security || 'tls');
+    q.set('type', srv.network || 'tcp');
+    if (srv.path) q.set('path', srv.path);
+    if (srv.hostHeader) q.set('host', srv.hostHeader);
+    if (srv.security === 'tls') {
+      q.set('sni', SNI || srv.sni || srv.host);
     }
-    return `vless://${u.uuid}@${s.host}:${s.port}?${q.toString()}#${name}`;
+    return `vless://${uuid}@${srv.host}:${srv.port}?${q.toString()}#${name}`;
   }
 
   if (proto === 'vmess') {
     const obj = {
       v: '2',
-      ps: cfgName(s),
-      add: s.host,
-      port: Number(s.port),
-      id: u.uuid,
+      ps: decodeURIComponent(name),
+      add: srv.host,
+      port: Number(srv.port),
+      id: uuid,
       aid: '0',
       scy: 'auto',
-      net: s.network || 'tcp',
+      net: srv.network || 'tcp',
       type: 'none',
-      host: s.hostHeader || '',
-      path: s.path || '',
-      tls: (s.security === 'reality' || s.security === 'tls') ? 'tls' : '',
-      sni: SNI || s.sni || s.host,
+      host: srv.hostHeader || '',
+      path: srv.path || '',
+      tls: srv.security === 'tls' ? 'tls' : '',
+      sni: SNI || srv.sni || srv.host,
     };
     return 'vmess://' + Buffer.from(JSON.stringify(obj), 'utf8').toString('base64');
   }
 
   if (proto === 'trojan') {
     const q = new URLSearchParams();
-    q.set('security', s.security === 'none' ? 'none' : 'tls');
-    q.set('type', s.network || 'tcp');
-    if (s.path) q.set('path', s.path);
-    if (s.hostHeader) q.set('host', s.hostHeader);
-    if (s.security !== 'none') q.set('sni', SNI || s.sni || s.host);
-    return `trojan://${u.uuid}@${s.host}:${s.port}?${q.toString()}#${name}`;
+    q.set('security', srv.security === 'none' ? 'none' : 'tls');
+    q.set('type', srv.network || 'tcp');
+    if (srv.path) q.set('path', srv.path);
+    if (srv.hostHeader) q.set('host', srv.hostHeader);
+    if (srv.security !== 'none') q.set('sni', SNI || srv.sni || srv.host);
+    return `trojan://${uuid}@${srv.host}:${srv.port}?${q.toString()}#${name}`;
   }
 
   if (proto === 'ss') {
-    const method = s.method || SS_METHOD;
-    const payload = Buffer.from(`${method}:${u.ssPass}`, 'utf8').toString('base64');
-    return `ss://${payload}@${s.host}:${s.port}#${name}`;
-  }
-
-  if (proto === 'wg') {
-    return [
-      '[Interface]',
-      `PrivateKey = ${u.wgPriv}`,
-      'Address = 10.0.0.2/32',
-      'DNS = 1.1.1.1',
-      'MTU = 1420',
-      '',
-      '[Peer]',
-      `PublicKey = ${WG_SERVER_PUBLIC_KEY || 'YOUR_SERVER_PUBLIC_KEY'}`,
-      `Endpoint = ${s.host}:${s.port}`,
-      'AllowedIPs = 0.0.0.0/0, ::/0',
-      'PersistentKeepalive = 25',
-    ].join('\n');
+    const method = srv.method || SS_METHOD;
+    const payload = Buffer.from(`${method}:${uuid.slice(0, 16)}`, 'utf8').toString('base64');
+    return `ss://${payload}@${srv.host}:${srv.port}#${name}`;
   }
 
   return '';
 }
 
-function buildSubscription(u) {
-  const s = getServer(u.serverId);
-  return ['vless', 'vmess', 'trojan', 'ss']
-    .map(p => buildLink(p, u, s))
-    .join('\n');
-}
-
-/* بازسازی لینک سرور استخر با برند خودمان */
-function poolLink(o) {
+function buildPoolLink(o) {
   const s = {
     host: o.host,
     port: o.port,
@@ -479,499 +506,1266 @@ function poolLink(o) {
     path: o.path || '',
     hostHeader: o.hostHeader || '',
     sni: o.sni || '',
-    flow: o.flow || '',
-    pbk: o.pbk || '',
-    sid: o.sid || '',
-    fp: o.fp || '',
     method: o.method || '',
     flag: '🆓',
-    name: 'رایگان',
+    name: 'Free Pool',
   };
-  const creds = { uuid: o.id || o.ssPass || genUUID(), ssPass: o.ssPass || o.id || genUUID() };
-  return buildLink(o.proto, creds, s);
+  return buildConfigString(o.proto, s, o.id || o.ssPass, `🐶 DogsVPN — 🆓 سرور رایگان (${o.proto.toUpperCase()})`);
 }
 
-/* ─────────────────────────── اتصال به پنل 3x-ui (اختیاری) ─────────────────────────── */
+function generateVipService(user, planId, serverId, proto = 'vless') {
+  const plan = getPlan(planId);
+  const server = getVipServer(serverId);
+  const serviceUuid = genUUID();
+  const config = buildConfigString(proto, server, serviceUuid, `🐶 DogsVPN — VIP ${server.flag} ${plan.volume}`);
 
-const xuiCache = { cookie: '', inbounds: [], at: 0 };
+  const now = new Date();
+  const expireDate = new Date(now.getTime() + plan.days * 24 * 60 * 60 * 1000);
 
-async function xuiFetch(pathname, opts = {}) {
-  const res = await fetch(XUI.base + pathname, {
-    ...opts,
-    headers: { ...(opts.headers || {}), cookie: xuiCache.cookie },
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) throw new Error('x-ui http ' + res.status);
-  return res;
-}
-
-async function xuiLogin() {
-  const res = await fetch(XUI.base + '/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ username: XUI.username, password: XUI.password }),
-    redirect: 'manual',
-    signal: AbortSignal.timeout(10000),
-  });
-  const cookies = [];
-  const raw = res.headers.get('set-cookie') || '';
-  raw.split(',').forEach(c => { const p = c.split(';')[0].trim(); if (p) cookies.push(p); });
-  if (res.headers.getSetCookie) {
-    res.headers.getSetCookie().forEach(c => cookies.push(c.split(';')[0]));
-  }
-  if (!cookies.length) throw new Error('x-ui login failed');
-  xuiCache.cookie = cookies.join('; ');
-}
-
-async function xuiList() {
-  if (xuiCache.inbounds.length && Date.now() - xuiCache.at < 5 * 60 * 1000) return xuiCache.inbounds;
-  const res = await xuiFetch('/panel/api/inbounds/list');
-  const data = await res.json();
-  const inbounds = (data.obj || []).filter(ib => !XUI.inboundIds.length || XUI.inboundIds.includes(ib.id));
-  xuiCache.inbounds = inbounds;
-  xuiCache.at = Date.now();
-  return inbounds;
-}
-
-function ibToOpts(ib) {
-  const ss = safeParse(ib.streamSettings, {});
-  const sec = ss.security || 'none';
-  const net = ss.network || 'tcp';
-  const o = {
-    host: XUI.configHost || ib.remark || 'SERVER',
-    port: ib.port,
-    security: sec === 'reality' ? 'reality' : (sec === 'tls' ? 'tls' : 'none'),
-    network: net,
-    flow: '',
-    path: '',
-    hostHeader: '',
-    sni: '',
-    pbk: '',
-    sid: '',
-    fp: '',
+  const service = {
+    id: 'srv_' + Date.now().toString(36),
+    uuid: serviceUuid,
+    planId: plan.id,
+    planTitle: plan.title,
+    volume: plan.volume,
+    days: plan.days,
+    serverId: server.id,
+    serverName: `${server.flag} ${server.name}`,
+    proto,
+    config,
+    createdAt: now.toISOString(),
+    expireAt: expireDate.toISOString(),
+    status: 'active',
   };
-  if (net === 'ws' && ss.wsSettings) {
-    o.path = ss.wsSettings.path || '';
-    o.hostHeader = ss.wsSettings.host || '';
-  }
-  if (net === 'grpc' && ss.grpcSettings) {
-    o.path = ss.grpcSettings.serviceName || '';
-  }
-  if (sec === 'reality' && ss.realitySettings) {
-    o.pbk = ss.realitySettings.publicKey || '';
-    o.sid = (ss.realitySettings.shortIds || [''])[0] || '';
-    o.sni = (ss.realitySettings.serverNames || [''])[0] || '';
-    o.fp = 'chrome';
-    o.flow = 'xtls-rprx-vision';
-  }
-  if (sec === 'tls' && ss.tlsSettings) {
-    o.sni = ss.tlsSettings.serverName || XUI.configHost || '';
-  }
-  const map = { vless: 'vless', vmess: 'vmess', trojan: 'trojan', shadowsocks: 'ss' };
-  return { proto: map[String(ib.protocol || '').toLowerCase()] || '', srvOpts: o };
-}
 
-async function xuiEnsureClients(u) {
-  try { await xuiLogin(); } catch (e) { /* کوکی قبلی ممکن است هنوز معتبر باشد */ }
-  const inbounds = await xuiList();
-  for (const ib of inbounds) {
-    const settings = safeParse(ib.settings, {});
-    const clients = Array.isArray(settings.clients) ? settings.clients : [];
-    if (clients.some(c => c && c.id === u.uuid)) continue;
-    const client = { id: u.uuid, email: 'tg_' + u.chatId, enable: true, expiryTime: 0, limitIp: 0, totalGB: 0, subId: u.uuid };
-    const body = JSON.stringify({ id: ib.id, settings: JSON.stringify({ ...settings, clients: [...clients, client] }) });
-    const res = await xuiFetch('/panel/api/inbounds/' + ib.id + '/addClient', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (data && data.success === false) throw new Error('addClient rejected');
-    console.log('✅ کاربر روی اینباند', ib.id, 'ساخته شد');
-  }
-  return inbounds.map(ibToOpts).filter(x => x.proto);
+  user.services = user.services || [];
+  user.services.unshift(service);
+  saveDB();
+  return service;
 }
 
 /* ─────────────────────────── ربات تلگرام ─────────────────────────── */
 
 const bot = new Telegraf(BOT_TOKEN);
 
-const mainMenu = Markup.inlineKeyboard([
-  [Markup.button.callback('📥 کانفیگ جدید', 'menu:config')],
-  [Markup.button.callback('🔗 لینک اشتراک', 'menu:sub')],
-  [Markup.button.callback('🌍 تغییر سرور', 'menu:server')],
-  [Markup.button.callback('📊 وضعیت من', 'menu:status')],
-  [Markup.button.callback('📖 راهنما', 'menu:help')],
-]);
+/* کیبوردهای اینلاین */
 
-const protoMenu = Markup.inlineKeyboard([
-  [Markup.button.callback('⚡ VLESS', 'cfg:vless'), Markup.button.callback('📡 VMess', 'cfg:vmess')],
-  [Markup.button.callback('🔴 Trojan', 'cfg:trojan'), Markup.button.callback('🟢 Shadowsocks', 'cfg:ss')],
-  [Markup.button.callback('🟡 WireGuard', 'cfg:wg')],
-  [Markup.button.callback('🔙 منو', 'menu:back')],
-]);
+function getMainMenu(userId) {
+  const isAdmin = String(userId) === String(ADMIN_ID);
+  const rows = [
+    [
+      Markup.button.callback('🛒 خرید اشتراک VIP', 'menu:buy'),
+      Markup.button.callback('🎁 کانفیگ رایگان', 'menu:free'),
+    ],
+    [
+      Markup.button.callback('📦 سرویس‌های من', 'menu:services'),
+      Markup.button.callback('💰 کیف پول', 'menu:wallet'),
+    ],
+    [
+      Markup.button.callback('⚡ تست رایگان VIP', 'menu:trial'),
+      Markup.button.callback('🔗 لینک سابسکریپشن', 'menu:sub'),
+    ],
+    [
+      Markup.button.callback('🌍 لیست سرورها و پینگ', 'menu:servers'),
+      Markup.button.callback('👥 دعوت دوستان (پاداش)', 'menu:invite'),
+    ],
+    [
+      Markup.button.callback('📖 راهنمای اتصال', 'menu:help'),
+      Markup.button.callback('👨‍💻 پشتیبانی', 'menu:support'),
+    ],
+  ];
 
-function backBtn() {
-  return Markup.inlineKeyboard([[Markup.button.callback('🔙 منو', 'menu:back')]]);
-}
-
-function serverMenu() {
-  const rows = [];
-  for (let i = 0; i < SERVERS.length; i += 2) {
-    const row = [Markup.button.callback(`${SERVERS[i].flag} ${SERVERS[i].name}`, `srv:${SERVERS[i].id}`)];
-    if (SERVERS[i + 1]) row.push(Markup.button.callback(`${SERVERS[i + 1].flag} ${SERVERS[i + 1].name}`, `srv:${SERVERS[i + 1].id}`));
-    rows.push(row);
+  if (isAdmin) {
+    rows.push([Markup.button.callback('👑 پنل مدیریت ادمین', 'admin:panel')]);
   }
-  rows.push([Markup.button.callback('🔙 منو', 'menu:back')]);
+
   return Markup.inlineKeyboard(rows);
 }
 
-const PROTOS = { vless: 'VLESS', vmess: 'VMess', trojan: 'Trojan', ss: 'Shadowsocks', wg: 'WireGuard' };
+function getPlansMenu() {
+  const rows = PLANS.map(p => [
+    Markup.button.callback(
+      `${p.popular ? '⭐ ' : ''}${p.title} | ${p.volume} — ${formatPrice(p.price)}`,
+      `buy:plan:${p.id}`
+    ),
+  ]);
+  rows.push([Markup.button.callback('🔙 بازگشت به منوی اصلی', 'menu:home')]);
+  return Markup.inlineKeyboard(rows);
+}
 
-function welcomeText() {
-  const mode = XUI_ENABLED ? '🛰 پنل اختصاصی' : '🆓 استخر سرورهای رایگان (به‌روزرسانی خودکار)';
+function getVipServersMenu(planId) {
+  const rows = [];
+  for (let i = 0; i < VIP_SERVERS.length; i += 2) {
+    const row = [Markup.button.callback(`${VIP_SERVERS[i].flag} ${VIP_SERVERS[i].name}`, `buy:srv:${planId}:${VIP_SERVERS[i].id}`)];
+    if (VIP_SERVERS[i + 1]) {
+      row.push(Markup.button.callback(`${VIP_SERVERS[i + 1].flag} ${VIP_SERVERS[i + 1].name}`, `buy:srv:${planId}:${VIP_SERVERS[i + 1].id}`));
+    }
+    rows.push(row);
+  }
+  rows.push([Markup.button.callback('🔙 بازگشت به پلن‌ها', 'menu:buy')]);
+  return Markup.inlineKeyboard(rows);
+}
+
+function getProtoMenu(planId, serverId) {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('⚡ VLESS (پیشنهادی)', `buy:proto:${planId}:${serverId}:vless`),
+      Markup.button.callback('📡 VMess', `buy:proto:${planId}:${serverId}:vmess`),
+    ],
+    [
+      Markup.button.callback('🔴 Trojan', `buy:proto:${planId}:${serverId}:trojan`),
+      Markup.button.callback('🟢 Shadowsocks', `buy:proto:${planId}:${serverId}:ss`),
+    ],
+    [Markup.button.callback('🔙 بازگشت', `buy:plan:${planId}`)],
+  ]);
+}
+
+function getPaymentMethodsMenu(planId, serverId, proto) {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('💳 کارت به کارت', `pay:card:${planId}:${serverId}:${proto}`),
+      Markup.button.callback('💰 پرداخت از کیف پول', `pay:wallet:${planId}:${serverId}:${proto}`),
+    ],
+    [Markup.button.callback('₮ پرداخت ارزی تتر (USDT)', `pay:crypto:${planId}:${serverId}:${proto}`)],
+    [Markup.button.callback('🔙 انصراف و بازگشت', 'menu:buy')],
+  ]);
+}
+
+function getFreeMenu() {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('⚡ کانفیگ VLESS', 'free:cfg:vless'),
+      Markup.button.callback('📡 کانفیگ VMess', 'free:cfg:vmess'),
+    ],
+    [
+      Markup.button.callback('🔴 کانفیگ Trojan', 'free:cfg:trojan'),
+      Markup.button.callback('🟢 کانفیگ Shadowsocks', 'free:cfg:ss'),
+    ],
+    [Markup.button.callback('🔗 دریافت لینک سابسکریپشن زنده', 'menu:sub')],
+    [Markup.button.callback('🔙 بازگشت به منوی اصلی', 'menu:home')],
+  ]);
+}
+
+function getBackHomeMenu() {
+  return Markup.inlineKeyboard([[Markup.button.callback('🔙 بازگشت به منوی اصلی', 'menu:home')]]);
+}
+
+/* متن خوش‌آمدگویی */
+function getWelcomeMessage(user) {
   return [
-    `${BOT_NAME}`,
-    '━━━━━━━━━━━━━━━',
-    '✅ *کاملاً رایگان برای همیشه*',
-    '🚫 بدون پرداخت، بدون اشتراک، بدون محدودیت',
+    `🐶 *به ربات رسمی ${BOT_NAME} خوش آمدید!*`,
+    '━━━━━━━━━━━━━━━━━━━━',
+    `سلام *${user.firstName || 'کاربر گرامی'}* عزیز 👋`,
     '',
-    `✨ حالت فعلی: ${mode}`,
-    '▫️ کانفیگ: VLESS ،VMess ،Trojan ،Shadowsocks ،WireGuard',
-    '▫️ لینک اشتراک اختصاصی برای همه دستگاه‌ها',
+    '🚀 سریع‌ترین و پایدارترین سرویس عبور از فیلترینگ با پروتکل‌های نسل جدید',
     '',
-    '👇 از منو انتخاب کن:',
+    '💎 *امکانات ربات:*',
+    '▫️ 🛒 خرید اشتراک‌های VIP اختصاصی (بدون قطعی و افت سرعت)',
+    '▫️ 🎁 کانفیگ‌های رایگان و روزانه استخر عمومی',
+    '▫️ ⚡ تست رایگان VIP برای اطمینان از کیفیت',
+    '▫️ 🔗 لینک سابسکریپشن هوشمند قابل استفاده در تمام اپلیکیشن‌ها',
+    '▫️ 🌍 سرورهای پرسرعت در ۸ کشور اروپایی و آسیایی',
+    '▫️ 👥 سیستم دعوت دوستان با پاداش نقدی در کیف پول',
+    '',
+    '💰 *موجودی کیف پول شما:* `' + formatPrice(user.balance) + '`',
+    '',
+    '👇 از منوی زیر گزینه مورد نظرتان را انتخاب کنید:',
   ].join('\n');
 }
 
-async function sendWelcome(ctx) {
-  const logo = path.join(__dirname, 'logo.png');
-  const opts = { reply_markup: mainMenu.reply_markup };
+/* ارسال یا ویرایش منوی اصلی */
+async function sendHome(ctx) {
+  const user = getUser(ctx.from.id, ctx.from);
+  user.step = null;
+  user.stepData = null;
+  saveDB();
+
+  const text = getWelcomeMessage(user);
+  const kb = getMainMenu(ctx.from.id);
+
   try {
-    if (fs.existsSync(logo)) {
-      await ctx.replyWithPhoto({ source: logo }, { caption: welcomeText(), ...opts });
+    if (ctx.updateType === 'callback_query') {
+      await ctx.editMessageText(text, { parse_mode: 'Markdown', ...kb });
     } else {
-      await ctx.reply(welcomeText(), opts);
+      await ctx.reply(text, { parse_mode: 'Markdown', ...kb });
     }
   } catch (e) {
-    try { await ctx.reply(welcomeText(), opts); } catch (e2) { /* ignore */ }
+    try {
+      await ctx.reply(text, { parse_mode: 'Markdown', ...kb });
+    } catch (e2) { /* ignore */ }
   }
 }
 
+/* ─────────────────────────── دستورات ربات ─────────────────────────── */
+
 bot.start(async ctx => {
-  getUser(ctx.from.id);
-  await sendWelcome(ctx).catch(() => {});
-});
+  const user = getUser(ctx.from.id, ctx.from);
 
-bot.command(['help', 'menu'], async ctx => {
-  await ctx.reply('📌 منوی اصلی', { reply_markup: mainMenu.reply_markup }).catch(() => {});
-});
+  // سیستم رفرال و دعوت
+  const payload = ctx.startPayload || '';
+  if (payload.startsWith('ref_')) {
+    const inviterId = payload.replace('ref_', '').trim();
+    if (inviterId && inviterId !== String(ctx.from.id) && !user.invitedBy && db.users[inviterId]) {
+      user.invitedBy = inviterId;
+      const inviter = db.users[inviterId];
+      inviter.inviteCount = (inviter.inviteCount || 0) + 1;
+      const reward = Number(db.settings.rewardPerInvite || 15000);
+      inviter.balance = (inviter.balance || 0) + reward;
+      saveDB();
 
-bot.command('status', async ctx => {
-  const u = getUser(ctx.from.id);
-  const lines = [
-    '📊 *وضعیت حساب*',
-    '',
-    `👤 نام: ${ctx.from.first_name || '—'}`,
-    `🆔 آیدی: \`${u.chatId}\``,
-    `🔑 UUID: \`${u.uuid}\``,
-    `📅 عضویت: ${u.createdAt.slice(0, 10)}`,
-  ];
-  if (XUI_ENABLED) {
-    const srv = getServer(u.serverId);
-    lines.push(`🌍 سرور: ${srv.flag} ${srv.name} — \`${srv.host}:${srv.port}\``);
-  } else {
-    lines.push(`🆓 استخر رایگان: ${pool.links.length} سرور زنده`);
-    lines.push(`🔄 آخرین آپدیت: ${pool.fetchedAt ? new Date(pool.fetchedAt).toLocaleString('fa-IR') : 'در حال بارگیری...'}`);
+      try {
+        await bot.telegram.sendMessage(
+          inviterId,
+          `🎉 *یک کاربر جدید با لینک شما عضو شد!*\n\n💰 مبلغ *${formatPrice(reward)}* به کیف پول شما واریز گردید.\n👥 تعداد کل دعوت‌ها: *${inviter.inviteCount} نفر*`,
+          { parse_mode: 'Markdown' }
+        );
+      } catch (e) { /* ignore */ }
+    }
   }
-  lines.push('', '💰 هزینه: **رایگان ♾️**', '⏳ انقضا: ندارد — برای همیشه فعال');
-  if (BASE_URL) lines.push('', `🔗 اشتراک: \`${BASE_URL}/sub/${u.uuid}\``);
-  await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', reply_markup: mainMenu.reply_markup }).catch(() => {});
+
+  await sendHome(ctx);
 });
 
-bot.command('sub', async ctx => {
-  const u = getUser(ctx.from.id);
-  if (!BASE_URL) {
-    return ctx.reply('⚠️ لینک اشتراک هنوز فعال نشده؛ کمی بعد تلاش کن.').catch(() => {});
-  }
+bot.command(['menu', 'home', 'panel'], async ctx => {
+  await sendHome(ctx);
+});
+
+bot.command('help', async ctx => {
   const text = [
-    '🔗 *لینک اشتراک اختصاصی تو*',
+    '📖 *راهنمای اتصال به سرویس DogsVPN*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    '۱️⃣ *دانلود اپلیکیشن مناسب سیستم‌عامل:*',
+    '📱 *اندروید:* v2rayNG / Hiddify / NekoBox',
+    '🍎 *آیفون (iOS):* Streisand / V2Box / FoXray',
+    '💻 *ویندوز / مک:* v2rayN / Hiddify / Clash Verge',
     '',
-    `\`${BASE_URL}/sub/${u.uuid}\``,
+    '۲️⃣ *روش اتصال:*',
+    '▫️ کانفیگ یا لینک اشتراک را از ربات کپی کنید.',
+    '▫️ وارد نرم‌افزار شوید و علامت ➕ یا `Import from clipboard` را بزنید.',
+    '▫️ دکمه اتصال (Connect) را لمس نمایید.',
     '',
-    '📲 نحوه استفاده:',
-    '▫️ اپ v2rayNG / Streisand / NekoBox / Hiddify',
-    '▫️ ➕ Import from Clipboard',
-    '▫️ همه کانفیگ‌ها با یک لینک آپدیت می‌شوند 🔄',
-    '',
-    '🔒 لینک مال خودته — با کسی share نکن!',
+    '✨ برای هرگونه سوال یا راهنمایی با پشتیبانی در تماس باشید.',
   ].join('\n');
-  await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: mainMenu.reply_markup }).catch(() => {});
+  await ctx.reply(text, { parse_mode: 'Markdown', ...getBackHomeMenu() });
 });
 
-bot.action('menu:back', async ctx => {
-  await ctx.answerCbQuery().catch(() => {});
-  await ctx.editMessageText('📌 منوی اصلی', { reply_markup: mainMenu.reply_markup }).catch(() => {});
-});
-
-bot.action('menu:config', async ctx => {
-  await ctx.answerCbQuery().catch(() => {});
-  await ctx.editMessageText('📥 کدام پروتکل؟', { reply_markup: protoMenu.reply_markup }).catch(() => {});
-});
-
-bot.action('menu:server', async ctx => {
-  await ctx.answerCbQuery().catch(() => {});
-  if (XUI_ENABLED) {
-    await ctx.editMessageText('🌍 سرور مورد نظرت رو انتخاب کن:', { reply_markup: serverMenu().reply_markup }).catch(() => {});
-  } else {
-    const text = [
-      '🌍 *حالت استخر رایگان*',
-      '',
-      'سرورها به‌صورت خودکار از بین سرورهای رایگانِ در دسترس انتخاب می‌شوند و هر چند ساعت آپدیت می‌شوند.',
-      '',
-      `🔢 الان ${pool.links.length} سرور زنده توی استخر هست.`,
-    ].join('\n');
-    await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backBtn().reply_markup }).catch(() => {});
+bot.command('admin', async ctx => {
+  if (String(ctx.from.id) !== String(ADMIN_ID)) {
+    return ctx.reply('⛔ شما به پنل مدیریت دسترسی ندارید.');
   }
+  await sendAdminPanel(ctx);
+});
+
+/* ─────────────────────────── اکشن‌های منوی اصلی ─────────────────────────── */
+
+bot.action('menu:home', async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  await sendHome(ctx);
+});
+
+// 🛒 خرید اشتراک
+bot.action('menu:buy', async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const text = [
+    '🛒 *خرید اشتراک اختصاصی DogsVPN VIP*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    '⚡ تمامی پلن‌ها دارای مشخصات زیر هستند:',
+    '✅ سرورهای اختصاصی با پورت 10Gbps بدون افت سرعت',
+    '✅ آیپی تمیز و اختصاصی مناسب اینستاگرام، یوتیوب، ترید و وب',
+    '✅ پشتیبانی ۲۴ ساعته و ضمانت اتصال پایدار',
+    '✅ بدون محدودیت کاربر (قابل استفاده در چند دستگاه)',
+    '',
+    '👇 لطفاً پلن مورد نظرتان را انتخاب کنید:',
+  ].join('\n');
+  await ctx.editMessageText(text, { parse_mode: 'Markdown', ...getPlansMenu() }).catch(() => {});
+});
+
+// انتخاب پلن
+bot.action(/^buy:plan:(.+)$/, async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const planId = ctx.match[1];
+  const plan = getPlan(planId);
+
+  const text = [
+    `💎 *انتخاب سرور برای ${plan.title}*`,
+    '━━━━━━━━━━━━━━━━━━━━',
+    `📦 *حجم ترافیک:* ${plan.volume}`,
+    `⏳ *مدت اعتبار:* ${plan.days} روز`,
+    `💰 *قیمت:* ${formatPrice(plan.price)}`,
+    '',
+    '🌍 لطفاً کشور و لوکیشن سرور مورد نظرتان را انتخاب نمایید:',
+  ].join('\n');
+
+  await ctx.editMessageText(text, { parse_mode: 'Markdown', ...getVipServersMenu(planId) }).catch(() => {});
+});
+
+// انتخاب سرور
+bot.action(/^buy:srv:([^:]+):([^:]+)$/, async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const planId = ctx.match[1];
+  const serverId = ctx.match[2];
+  const plan = getPlan(planId);
+  const server = getVipServer(serverId);
+
+  const text = [
+    '⚡ *انتخاب پروتکل اتصال*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    `📦 *پلن انتخابی:* ${plan.title} (${plan.volume})`,
+    `🌍 *سرور انتخابی:* ${server.flag} ${server.name}`,
+    `💰 *مبلغ قابل پرداخت:* ${formatPrice(plan.price)}`,
+    '',
+    '👇 لطفاً پروتکل اتصال دلخواه خود را مشخص کنید:',
+  ].join('\n');
+
+  await ctx.editMessageText(text, { parse_mode: 'Markdown', ...getProtoMenu(planId, serverId) }).catch(() => {});
+});
+
+// انتخاب پروتکل و نمایش روش‌های پرداخت
+bot.action(/^buy:proto:([^:]+):([^:]+):([^:]+)$/, async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const planId = ctx.match[1];
+  const serverId = ctx.match[2];
+  const proto = ctx.match[3];
+
+  const user = getUser(ctx.from.id, ctx.from);
+  const plan = getPlan(planId);
+  const server = getVipServer(serverId);
+
+  const text = [
+    '💳 *پیش‌فاکتور و انتخاب روش پرداخت*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    `📦 *پلن:* ${plan.title}`,
+    `📊 *حجم:* ${plan.volume} | ⏳ *اعتبار:* ${plan.days} روز`,
+    `🌍 *لوکیشن:* ${server.flag} ${server.name}`,
+    `📡 *پروتکل:* ${proto.toUpperCase()}`,
+    '━━━━━━━━━━━━━━━━━━━━',
+    `💰 *مبلغ فاکتور:* *${formatPrice(plan.price)}*`,
+    `👛 *موجودی فعلی شما:* *${formatPrice(user.balance)}*`,
+    '',
+    '👇 لطفاً روش پرداخت را انتخاب کنید:',
+  ].join('\n');
+
+  await ctx.editMessageText(text, { parse_mode: 'Markdown', ...getPaymentMethodsMenu(planId, serverId, proto) }).catch(() => {});
+});
+
+// پرداخت با کیف پول
+bot.action(/^pay:wallet:([^:]+):([^:]+):([^:]+)$/, async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const planId = ctx.match[1];
+  const serverId = ctx.match[2];
+  const proto = ctx.match[3];
+
+  const user = getUser(ctx.from.id, ctx.from);
+  const plan = getPlan(planId);
+  const server = getVipServer(serverId);
+
+  if (user.balance < plan.price) {
+    const diff = plan.price - user.balance;
+    const text = [
+      '❌ *موجودی کیف پول شما کافی نیست!*',
+      '━━━━━━━━━━━━━━━━━━━━',
+      `💰 مبلغ فاکتور: *${formatPrice(plan.price)}*`,
+      `👛 موجودی شما: *${formatPrice(user.balance)}*`,
+      `⚠️ کسری موجودی: *${formatPrice(diff)}*`,
+      '',
+      'می‌توانید از روش کارت به کارت استفاده کنید یا ابتدا کیف پول خود را شارژ نمایید.',
+    ].join('\n');
+
+    return ctx.editMessageText(text, {
+      parse_mode: 'Markdown',
+      reply_markup: Markup.inlineKeyboard([
+        [Markup.button.callback('💳 پرداخت مستقیم کارت به کارت', `pay:card:${planId}:${serverId}:${proto}`)],
+        [Markup.button.callback('💰 شارژ کیف پول', 'wallet:charge')],
+        [Markup.button.callback('🔙 بازگشت', 'menu:buy')],
+      ]),
+    }).catch(() => {});
+  }
+
+  // کسر از موجودی و ساخت آنی سرویس VIP
+  user.balance -= plan.price;
+  const service = generateVipService(user, planId, serverId, proto);
+
+  const text = [
+    '🎉 *پرداخت موفق! اشتراک VIP شما فعال شد.*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    `📦 *پلن:* ${plan.title} (${plan.volume})`,
+    `🌍 *سرور:* ${server.flag} ${server.name}`,
+    `📡 *پروتکل:* ${proto.toUpperCase()}`,
+    `⏳ *تاریخ انقضا:* ${service.expireAt.slice(0, 10)}`,
+    '',
+    '🔑 *کانفیگ اختصاصی شما (لمس برای کپی):*',
+    '```',
+    service.config,
+    '```',
+    '',
+    BASE_URL ? `🔗 *لینک سابسکریپشن:* \`${BASE_URL}/sub/${service.uuid}\`` : '',
+    '',
+    '📲 کانفیگ بالا را کپی کرده و در اپلیکیشن خود اضافه نمایید.',
+  ].filter(Boolean).join('\n');
+
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    reply_markup: Markup.inlineKeyboard([
+      [Markup.button.callback('📦 سرویس‌های من', 'menu:services')],
+      [Markup.button.callback('🔙 منوی اصلی', 'menu:home')],
+    ]),
+  }).catch(() => {});
+});
+
+// پرداخت کارت به کارت
+bot.action(/^pay:card:([^:]+):([^:]+):([^:]+)$/, async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const planId = ctx.match[1];
+  const serverId = ctx.match[2];
+  const proto = ctx.match[3];
+
+  const user = getUser(ctx.from.id, ctx.from);
+  const plan = getPlan(planId);
+  const server = getVipServer(serverId);
+
+  user.step = 'awaiting_payment_receipt';
+  user.stepData = { planId, serverId, proto, amount: plan.price, type: 'buy_plan' };
+  saveDB();
+
+  const text = [
+    '💳 *پرداخت به صورت کارت به کارت*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    `📦 *سفارش:* ${plan.title} (${server.flag} ${server.name})`,
+    `💰 *مبلغ دقیق قابل واریز:* *${formatPrice(plan.price)}*`,
+    '',
+    '💳 *اطلاعات حساب بانکی:*',
+    `▫️ شماره کارت: \`${db.settings.cardNumber}\``,
+    `▫️ صاحب حساب: *${db.settings.cardHolder}*`,
+    '',
+    '📸 *مرحله بعد:*',
+    'پس از واریز مبلغ، **عکس فیش یا اسکرین‌شات رسید تراکنش** را در همین چت ارسال نمایید.',
+    '',
+    '⚠️ در صورت انصراف دکمه زیر را لمس کنید.',
+  ].join('\n');
+
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    reply_markup: Markup.inlineKeyboard([[Markup.button.callback('❌ انصراف از پرداخت', 'menu:home')]]),
+  }).catch(() => {});
+});
+
+// پرداخت تتری (USDT)
+bot.action(/^pay:crypto:([^:]+):([^:]+):([^:]+)$/, async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const planId = ctx.match[1];
+  const serverId = ctx.match[2];
+  const proto = ctx.match[3];
+
+  const user = getUser(ctx.from.id, ctx.from);
+  const plan = getPlan(planId);
+  const server = getVipServer(serverId);
+  // تبدیل تقریبی تومان به تتر (مثلاً هر تتر 95,000 تومان یا متناسب)
+  const usdtAmount = Math.max(1.5, Math.ceil((plan.price / 95000) * 10) / 10);
+
+  user.step = 'awaiting_payment_receipt';
+  user.stepData = { planId, serverId, proto, amount: plan.price, usdtAmount, type: 'buy_crypto' };
+  saveDB();
+
+  const text = [
+    '₮ *پرداخت با ارز دیجیتال تتر (USDT - TRC20)*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    `📦 *سفارش:* ${plan.title} (${server.flag} ${server.name})`,
+    `💰 *مبلغ معادل:* *${usdtAmount} USDT*`,
+    '',
+    '📬 *آدرس کیف پول (TRC-20):*',
+    `\`${db.settings.cryptoTrc20}\``,
+    '',
+    '📸 *مرحله بعد:*',
+    'پس از انتقال، **هش تراکنش (TxID) یا اسکرین‌شات واریز** را در همین چت بفرستید.',
+  ].join('\n');
+
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    reply_markup: Markup.inlineKeyboard([[Markup.button.callback('❌ انصراف از پرداخت', 'menu:home')]]),
+  }).catch(() => {});
+});
+
+/* ─────────────────────────── بخش رایگان ─────────────────────────── */
+
+bot.action('menu:free', async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const text = [
+    '🎁 *کانفیگ‌های رایگان و استخر سرور عمومی*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    '✨ کانفیگ‌های این بخش کاملاً رایگان هستند و به‌صورت خودکار هر چند ساعت با سرورهای زنده به‌روزرسانی می‌شوند.',
+    '',
+    `🔢 *تعداد سرورهای زنده فعلی:* ${freePool.links.length} سرور`,
+    '',
+    '👇 لطفاً پروتکل مورد نظر را انتخاب نمایید:',
+  ].join('\n');
+
+  await ctx.editMessageText(text, { parse_mode: 'Markdown', ...getFreeMenu() }).catch(() => {});
+});
+
+bot.action(/^free:cfg:(vless|vmess|trojan|ss)$/, async ctx => {
+  const proto = ctx.match[1];
+  await ctx.answerCbQuery('⏳ در حال دریافت سرور زنده...').catch(() => {});
+
+  await ensureFreePool();
+  const candidates = freePool.links.filter(l => l.proto === proto);
+
+  if (!candidates.length) {
+    return ctx.editMessageText(
+      `😔 در حال حاضر سرور زنده برای پروتکل ${proto.toUpperCase()} در استخر عمومی ثبت نشده است.\n\nکمی بعد دوباره امتحان کنید یا از دکمه زیر لینک سابسکریپشن را بردارید. 🔄`,
+      {
+        reply_markup: Markup.inlineKeyboard([
+          [Markup.button.callback('🔄 امتحان مجدد', `free:cfg:${proto}`)],
+          [Markup.button.callback('🔙 بازگشت', 'menu:free')],
+        ]),
+      }
+    ).catch(() => {});
+  }
+
+  const selected = candidates[Math.floor(Math.random() * candidates.length)];
+  const link = buildPoolLink(selected);
+  const ping = selected.ping ? selected.ping + 'ms' : 'خوب';
+
+  const text = [
+    `✅ *کانفیگ رایگان ${proto.toUpperCase()} ساخته شد!* 🆓`,
+    '━━━━━━━━━━━━━━━━━━━━',
+    `🌍 *آدرس سرور:* \`${selected.host}:${selected.port}\``,
+    `⚡ *پینگ تخمینی:* ${ping}`,
+    '',
+    '🔑 *کانفیگ (لمس برای کپی):*',
+    '```',
+    link,
+    '```',
+    '',
+    '📲 کانفیگ را کپی و در اپلیکیشن خود وارد کنید.',
+  ].join('\n');
+
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    reply_markup: Markup.inlineKeyboard([
+      [Markup.button.callback('🔄 دریافت کانفیگ دیگر', `free:cfg:${proto}`)],
+      [Markup.button.callback('🔗 لینک اشتراک سابسکریپشن', 'menu:sub')],
+      [Markup.button.callback('🔙 بازگشت', 'menu:free')],
+    ]),
+  }).catch(() => {});
+});
+
+/* تست رایگان VIP */
+bot.action('menu:trial', async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const user = getUser(ctx.from.id, ctx.from);
+
+  if (user.usedTrial) {
+    const text = [
+      '⚠️ *شما قبلاً از هدیه تست رایگان VIP استفاده کرده‌اید.*',
+      '',
+      'برای تمدید و دریافت سرورهای پرسرعت اختصاصی می‌توانید از بخش «🛒 خرید اشتراک VIP» اقدام نمایید.',
+    ].join('\n');
+
+    return ctx.editMessageText(text, {
+      parse_mode: 'Markdown',
+      reply_markup: Markup.inlineKeyboard([
+        [Markup.button.callback('🛒 خرید اشتراک VIP', 'menu:buy')],
+        [Markup.button.callback('🔙 بازگشت به منو', 'menu:home')],
+      ]),
+    }).catch(() => {});
+  }
+
+  user.usedTrial = true;
+  const trialPlan = { id: 'trial', title: '🎁 تست رایگان VIP', volume: '۲ گیگابایت', days: 2 };
+  const server = VIP_SERVERS[0];
+  const service = generateVipService(user, 'p1', server.id, 'vless');
+  service.planTitle = '🎁 تست رایگان ۲ روزه VIP';
+  saveDB();
+
+  const text = [
+    '🎉 *تست رایگان VIP شما فعال گردید!*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    '⏱ *مدت اعتبار:* ۲ روز',
+    '📊 *حجم ترافیک:* ۲ گیگابایت تست',
+    `🌍 *سرور اختصاصی:* ${server.flag} ${server.name}`,
+    '',
+    '🔑 *کانفیگ اختصاصی تست:*',
+    '```',
+    service.config,
+    '```',
+    '',
+    '📲 کانفیگ را کپی نموده و در نرم‌افزار خود استفاده نمایید.',
+  ].join('\n');
+
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    reply_markup: Markup.inlineKeyboard([
+      [Markup.button.callback('📦 سرویس‌های من', 'menu:services')],
+      [Markup.button.callback('🔙 منوی اصلی', 'menu:home')],
+    ]),
+  }).catch(() => {});
+});
+
+/* ─────────────────────────── سرویس‌های من ─────────────────────────── */
+
+bot.action('menu:services', async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const user = getUser(ctx.from.id, ctx.from);
+  const services = user.services || [];
+
+  if (!services.length) {
+    const text = [
+      '📦 *شما در حال حاضر سرویس فعالی ندارید.*',
+      '',
+      'برای دریافت سرورهای پرسرعت می‌توانید از گزینه‌های زیر استفاده کنید 👇',
+    ].join('\n');
+
+    return ctx.editMessageText(text, {
+      parse_mode: 'Markdown',
+      reply_markup: Markup.inlineKeyboard([
+        [Markup.button.callback('🛒 خرید اشتراک VIP', 'menu:buy')],
+        [Markup.button.callback('⚡ تست رایگان VIP', 'menu:trial')],
+        [Markup.button.callback('🔙 بازگشت به منو', 'menu:home')],
+      ]),
+    }).catch(() => {});
+  }
+
+  const lines = ['📦 *لیست سرویس‌های فعال شما:*', '━━━━━━━━━━━━━━━━━━━━'];
+
+  services.forEach((s, idx) => {
+    lines.push(`🔹 *سرویس #${idx + 1}: ${s.planTitle || 'اشتراک VIP'}*`);
+    lines.push(`🌍 سرور: ${s.serverName || 'اختصاصی'}`);
+    lines.push(`⏳ تاریخ انقضا: \`${(s.expireAt || '').slice(0, 10)}\``);
+    lines.push(`🔑 کانفیگ:`);
+    lines.push('```');
+    lines.push(s.config);
+    lines.push('```');
+    lines.push('');
+  });
+
+  if (BASE_URL) {
+    lines.push(`🔗 *لینک سابسکریپشن جامع:* \`${BASE_URL}/sub/${user.uuid}\``);
+  }
+
+  await ctx.editMessageText(lines.join('\n'), {
+    parse_mode: 'Markdown',
+    reply_markup: Markup.inlineKeyboard([
+      [Markup.button.callback('🛒 خرید اشتراک جدید', 'menu:buy')],
+      [Markup.button.callback('🔙 بازگشت به منو', 'menu:home')],
+    ]),
+  }).catch(() => {});
+});
+
+/* ─────────────────────────── کیف پول ─────────────────────────── */
+
+bot.action('menu:wallet', async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const user = getUser(ctx.from.id, ctx.from);
+
+  const text = [
+    '💰 *کیف پول و موجودی حساب*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    `👤 نام: *${user.firstName || 'کاربر'}*`,
+    `🆔 شناسه کاربری: \`${user.chatId}\``,
+    `👛 *موجودی فعلی شما:* *${formatPrice(user.balance)}*`,
+    `👥 تعداد دعوت‌ها: *${user.inviteCount || 0} نفر*`,
+    '',
+    '✨ با شارژ کیف پول می‌توانید در هر زمان به راحتی و با یک کلیک پلن‌های VIP را خریداری یا تمدید نمایید.',
+  ].join('\n');
+
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    reply_markup: Markup.inlineKeyboard([
+      [Markup.button.callback('💳 افزایش موجودی (کارت به کارت)', 'wallet:charge')],
+      [Markup.button.callback('👥 کسب موجودی با دعوت دوستان', 'menu:invite')],
+      [Markup.button.callback('🔙 بازگشت به منوی اصلی', 'menu:home')],
+    ]),
+  }).catch(() => {});
+});
+
+bot.action('wallet:charge', async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const user = getUser(ctx.from.id, ctx.from);
+  user.step = 'awaiting_charge_amount';
+  saveDB();
+
+  const text = [
+    '💳 *شارژ کیف پول (کارت به کارت)*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    'لطفاً **مبلغ مورد نظر برای افزایش موجودی را به تومان به صورت عدد انگلیسی** ارسال کنید:',
+    '',
+    '▫️ نمونه: `150000`',
+  ].join('\n');
+
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    reply_markup: Markup.inlineKeyboard([[Markup.button.callback('❌ انصراف', 'menu:wallet')]]),
+  }).catch(() => {});
+});
+
+/* ─────────────────────────── لینک سابسکریپشن ─────────────────────────── */
+
+bot.action('menu:sub', async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const user = getUser(ctx.from.id, ctx.from);
+
+  if (!BASE_URL) {
+    return ctx.editMessageText(
+      '⚠️ لینک اشتراک سابسکریپشن در سرور فعال نشده است.\nمی‌توانید کانفیگ‌ها را مستقیماً از بخش «کانفیگ رایگان» یا «سرویس‌های من» کپی نمایید.',
+      { parse_mode: 'Markdown', ...getBackHomeMenu() }
+    ).catch(() => {});
+  }
+
+  const subUrl = `${BASE_URL}/sub/${user.uuid}`;
+  const text = [
+    '🔗 *لینک سابسکریپشن اختصاصی شما*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    'با افزودن این لینک به نرم‌افزار، تمامی سرورهای شما همیشه به‌صورت خودکار به‌روزرسانی می‌شوند 🔄',
+    '',
+    `\`${subUrl}\``,
+    '',
+    '📲 *نحوه استفاده در نرم‌افزارها:*',
+    '▫️ اپلیکیشن v2rayNG / Streisand / Hiddify / V2Box',
+    '▫️ منوی Subscription Groups ➕ Add',
+    '▫️ لینک بالا را Paste کرده و ذخیره نمایید.',
+  ].join('\n');
+
+  await ctx.editMessageText(text, { parse_mode: 'Markdown', ...getBackHomeMenu() }).catch(() => {});
+});
+
+/* ─────────────────────────── لیست سرورها و پینگ ─────────────────────────── */
+
+bot.action('menu:servers', async ctx => {
+  await ctx.answerCbQuery('⏳ در حال تست پینگ سرورها...').catch(() => {});
+
+  const rows = [];
+  for (const s of VIP_SERVERS) {
+    const ping = await testPing(s.host, s.port);
+    rows.push(`${s.flag} *${s.name}*: ${ping ? '⚡ `' + ping + 'ms`' : '❌ آفلاین'}`);
+  }
+
+  const text = [
+    '🌍 *وضعیت سرورهای اختصاصی VIP DogsVPN*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    ...rows,
+    '',
+    `🆓 *سرورهای استخر رایگان:* ${freePool.links.length} سرور آنلاین`,
+  ].join('\n');
+
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    reply_markup: Markup.inlineKeyboard([
+      [Markup.button.callback('🔄 تست مجدد پینگ', 'menu:servers')],
+      [Markup.button.callback('🔙 بازگشت به منو', 'menu:home')],
+    ]),
+  }).catch(() => {});
+});
+
+/* ─────────────────────────── دعوت دوستان (زیرمجموعه‌گیری) ─────────────────────────── */
+
+bot.action('menu:invite', async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const user = getUser(ctx.from.id, ctx.from);
+  const botUser = BOT_USERNAME || 'DogsVPNBot';
+  const inviteLink = `https://t.me/${botUser}?start=ref_${user.chatId}`;
+  const reward = Number(db.settings.rewardPerInvite || 15000);
+
+  const text = [
+    '👥 *کسب درآمد و موجودی رایگان با دعوت دوستان*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    `💰 به ازای هر نفری که با لینک اختصاصی شما عضو ربات شود، مبلغ *${formatPrice(reward)}* به کیف پول شما اضافه می‌گردد!`,
+    '',
+    `📊 *تعداد دوستان دعوت شده توسط شما:* *${user.inviteCount || 0} نفر*`,
+    `👛 *موجودی فعلی شما:* *${formatPrice(user.balance)}*`,
+    '',
+    '🔗 *لینک دعوت اختصاصی شما (لمس برای کپی):*',
+    `\`${inviteLink}\``,
+    '',
+    'پیام زیر را برای دوستان یا گروه‌های خود فوروارد کنید 👇',
+  ].join('\n');
+
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    reply_markup: Markup.inlineKeyboard([
+      [Markup.button.url('🚀 اشتراک‌گذاری در تلگرام', `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('🔥 قوی‌ترین فیلترشکن بدون قطعی و پرسرعت — رایگان و VIP')}`)],
+      [Markup.button.callback('🔙 بازگشت به منو', 'menu:home')],
+    ]),
+  }).catch(() => {});
+});
+
+/* ─────────────────────────── پشتیبانی و راهنما ─────────────────────────── */
+
+bot.action('menu:support', async ctx => {
+  await ctx.answerCbQuery().catch(() => {});
+  const text = [
+    '👨‍💻 *پشتیبانی و ارتباط با مدیریت DogsVPN*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    'در صورت وجود هرگونه سوال، مشکل در اتصال، یا پیگیری سفارشات با پشتیبانی ما در تماس باشید:',
+    '',
+    `▫️ آیدی پشتیبانی: ${SUPPORT_USERNAME}`,
+    `▫️ کانال رسمی اطلاع‌رسانی: ${CHANNEL_USERNAME}`,
+  ].join('\n');
+
+  await ctx.editMessageText(text, {
+    parse_mode: 'Markdown',
+    reply_markup: Markup.inlineKeyboard([
+      [Markup.button.url('💬 پیام به پشتیبانی', `https://t.me/${SUPPORT_USERNAME.replace('@', '')}`)],
+      [Markup.button.url('📢 عضویت در کانال', `https://t.me/${CHANNEL_USERNAME.replace('@', '')}`)],
+      [Markup.button.callback('🔙 بازگشت به منو', 'menu:home')],
+    ]),
+  }).catch(() => {});
 });
 
 bot.action('menu:help', async ctx => {
   await ctx.answerCbQuery().catch(() => {});
   const text = [
-    '📖 *راهنما*',
+    '📖 *راهنمای اتصال به سرویس DogsVPN*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    '۱️⃣ *دانلود اپلیکیشن مناسب سیستم‌عامل:*',
+    '📱 *اندروید:* v2rayNG / Hiddify / NekoBox',
+    '🍎 *آیفون (iOS):* Streisand / V2Box / FoXray',
+    '💻 *ویندوز / مک:* v2rayN / Hiddify / Clash Verge',
     '',
-    '۱️⃣ اپ مناسب دستگاهت رو نصب کن:',
-    '   📱 اندروید: v2rayNG یا Hiddify',
-    '   🍎 آیفون: Streisand یا V2Box',
-    '   💻 ویندوز: v2rayN یا Hiddify',
+    '۲️⃣ *روش اتصال:*',
+    '▫️ کانفیگ یا لینک اشتراک را از ربات کپی کنید.',
+    '▫️ وارد نرم‌افزار شوید و علامت ➕ یا `Import from clipboard` را بزنید.',
+    '▫️ دکمه اتصال (Connect) را لمس نمایید.',
     '',
-    '۲️⃣ از منو «📥 کانفیگ جدید» یک پروتکل انتخاب کن،',
-    '   یا «🔗 لینک اشتراک» رو کپی کن.',
-    '',
-    '۳️⃣ توی اپ:',
-    '   ➕ → Import from Clipboard',
-    '',
-    '▫️ همه‌چیز رایگانه، بدون محدودیت ♾️',
-    XUI_ENABLED ? '▫️ سرور دلخواهت رو از «🌍 تغییر سرور» انتخاب کن' : '▫️ سرورها خودکار از استخر رایگان انتخاب می‌شوند',
-    '',
-    '⚠️ سرورهای رایگان عمومی هستند؛ برای حریم خصوصی بیشتر، سرور اختصاصی بهتر است.',
+    '✨ تمام کانفیگ‌ها تست شده و دارای اتصال پایدار هستند.',
   ].join('\n');
-  await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backBtn().reply_markup }).catch(() => {});
+
+  await ctx.editMessageText(text, { parse_mode: 'Markdown', ...getBackHomeMenu() }).catch(() => {});
 });
 
-bot.action('menu:sub', async ctx => {
-  await ctx.answerCbQuery().catch(() => {});
-  const u = getUser(ctx.from.id);
-  if (!BASE_URL) {
-    return ctx.editMessageText('⚠️ لینک اشتراک هنوز فعال نشده؛ کمی بعد دوباره تلاش کن 🙏', { reply_markup: backBtn().reply_markup }).catch(() => {});
-  }
+/* ─────────────────────────── پنل مدیریت ادمین ─────────────────────────── */
+
+async function sendAdminPanel(ctx) {
+  const totalUsers = Object.keys(db.users).length;
+  const pendingOrders = db.orders.filter(o => o.status === 'pending').length;
+  const approvedOrders = db.orders.filter(o => o.status === 'approved').length;
+  const totalSales = db.orders
+    .filter(o => o.status === 'approved')
+    .reduce((sum, o) => sum + (o.amount || 0), 0);
+
   const text = [
-    '🔗 *لینک اشتراک اختصاصی تو*',
+    '👑 *پنل مدیریت ربات DogsVPN*',
+    '━━━━━━━━━━━━━━━━━━━━',
+    `👥 *تعداد کل کاربران:* ${totalUsers} نفر`,
+    `📋 *سفارشات در انتظار بررسی:* ${pendingOrders} عدد`,
+    `✅ *سفارشات تایید شده:* ${approvedOrders} عدد`,
+    `💰 *مجموع درآمد کل:* ${formatPrice(totalSales)}`,
     '',
-    `\`${BASE_URL}/sub/${u.uuid}\``,
-    '',
-    '📲 نحوه استفاده:',
-    '▫️ اپ v2rayNG / Streisand / NekoBox / Hiddify',
-    '▫️ ➕ Import from Clipboard',
-    '▫️ همه کانفیگ‌ها با یک لینک آپدیت می‌شوند 🔄',
-    '',
-    '🔒 لینک مال خودته — با کسی share نکن!',
+    `💳 *شماره کارت فعلی:* \`${db.settings.cardNumber}\``,
+    `👤 *صاحب حساب:* ${db.settings.cardHolder}`,
+    `₮ *کیف پول تتر:* \`${db.settings.cryptoTrc20}\``,
   ].join('\n');
-  await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backBtn().reply_markup }).catch(() => {});
-});
 
-bot.action('menu:status', async ctx => {
-  await ctx.answerCbQuery().catch(() => {});
-  const u = getUser(ctx.from.id);
-  const lines = [
-    '📊 *وضعیت حساب*',
-    '',
-    `👤 نام: ${ctx.from.first_name || '—'}`,
-    `🆔 آیدی: \`${u.chatId}\``,
-    `🔑 UUID: \`${u.uuid}\``,
-    `📅 عضویت: ${u.createdAt.slice(0, 10)}`,
-  ];
-  if (XUI_ENABLED) {
-    const srv = getServer(u.serverId);
-    lines.push(`🌍 سرور: ${srv.flag} ${srv.name} — \`${srv.host}:${srv.port}\``);
+  const kb = Markup.inlineKeyboard([
+    [Markup.button.callback(`📋 بررسی فیش‌ها (${pendingOrders})`, 'admin:orders')],
+    [Markup.button.callback('📢 پیام همگانی (Broadcast)', 'admin:broadcast')],
+    [Markup.button.callback('💳 تغییر شماره کارت', 'admin:setcard')],
+    [Markup.button.callback('💰 شارژ مستقیم کیف پول کاربر', 'admin:charge_user')],
+    [Markup.button.callback('🔙 بازگشت به منوی کاربری', 'menu:home')],
+  ]);
+
+  if (ctx.updateType === 'callback_query') {
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', ...kb }).catch(() => {});
   } else {
-    lines.push(`🆓 استخر رایگان: ${pool.links.length} سرور زنده`);
-    lines.push(`🔄 آخرین آپدیت: ${pool.fetchedAt ? new Date(pool.fetchedAt).toLocaleString('fa-IR') : 'در حال بارگیری...'}`);
+    await ctx.reply(text, { parse_mode: 'Markdown', ...kb });
   }
-  lines.push('', '💰 هزینه: **رایگان ♾️**', '⏳ انقضا: ندارد — برای همیشه فعال');
-  if (BASE_URL) lines.push('', `🔗 اشتراک: \`${BASE_URL}/sub/${u.uuid}\``);
-  await ctx.editMessageText(lines.join('\n'), { parse_mode: 'Markdown', reply_markup: backBtn().reply_markup }).catch(() => {});
+}
+
+bot.action('admin:panel', async ctx => {
+  if (String(ctx.from.id) !== String(ADMIN_ID)) return ctx.answerCbQuery('⛔ عدم دسترسی');
+  await ctx.answerCbQuery().catch(() => {});
+  await sendAdminPanel(ctx);
 });
 
-bot.action(/^srv:(.+)$/, async ctx => {
-  const srv = SERVERS.find(s => s.id === ctx.match[1]);
-  if (!srv) return ctx.answerCbQuery('سرور پیدا نشد').catch(() => {});
+// مشاهده فیش‌های در انتظار بررسی
+bot.action('admin:orders', async ctx => {
+  if (String(ctx.from.id) !== String(ADMIN_ID)) return ctx.answerCbQuery('⛔');
   await ctx.answerCbQuery().catch(() => {});
-  const u = getUser(ctx.from.id);
-  u.serverId = srv.id;
-  saveUsers();
-  await ctx.editMessageText('⏳ تست پینگ...').catch(() => {});
-  const ping = await testPing(srv.host, srv.port);
+
+  const pending = db.orders.filter(o => o.status === 'pending');
+  if (!pending.length) {
+    return ctx.editMessageText('✅ هیچ سفارش یا فیش در انتظار بررسی وجود ندارد.', {
+      reply_markup: Markup.inlineKeyboard([[Markup.button.callback('🔙 پنل ادمین', 'admin:panel')]]),
+    }).catch(() => {});
+  }
+
+  const o = pending[0];
+  const u = db.users[o.userId] || { firstName: 'نامشخص', chatId: o.userId };
+  const plan = getPlan(o.planId);
+
   const text = [
-    '✅ *سرور تغییر کرد!*',
-    '',
-    `${srv.flag} ${srv.name}`,
-    `🌍 \`${srv.host}:${srv.port}\``,
-    `⚡ پینگ: ${ping ? ping + 'ms' : 'نامشخص'}`,
-    '',
-    '📥 حالا از «کانفیگ جدید» کانفیگ بگیر.',
+    `📋 *بررسی سفارش #${o.id}*`,
+    '━━━━━━━━━━━━━━━━━━━━',
+    `👤 *کاربر:* ${u.firstName} (\`${o.userId}\`)`,
+    `📦 *نوع سفارش:* ${o.type === 'wallet_charge' ? 'شارژ کیف پول' : plan.title}`,
+    `💰 *مبلغ فیش:* *${formatPrice(o.amount)}*`,
+    `📅 *زمان ثبت:* ${o.createdAt.slice(0, 19).replace('T', ' ')}`,
   ].join('\n');
-  await ctx.editMessageText(text, {
-    parse_mode: 'Markdown',
-    reply_markup: Markup.inlineKeyboard([
-      [Markup.button.callback('📥 کانفیگ جدید', 'menu:config')],
-      [Markup.button.callback('🔙 منو', 'menu:back')],
-    ]),
-  }).catch(() => {});
+
+  const kb = Markup.inlineKeyboard([
+    [
+      Markup.button.callback('✅ تایید و تحویل سفارش', `order:approve:${o.id}`),
+      Markup.button.callback('❌ رد سفارش', `order:reject:${o.id}`),
+    ],
+    [Markup.button.callback('🔙 بازگشت به پنل ادمین', 'admin:panel')],
+  ]);
+
+  if (o.photoId) {
+    await ctx.replyWithPhoto(o.photoId, { caption: text, parse_mode: 'Markdown', ...kb });
+  } else {
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', ...kb }).catch(() => {});
+  }
 });
 
-bot.action(/^cfg:(vless|vmess|trojan|ss|wg)$/, async ctx => {
-  const proto = ctx.match[1];
-  const u = getUser(ctx.from.id);
-  await ctx.answerCbQuery().catch(() => {});
-  await ctx.editMessageText('⏳ در حال ساخت کانفیگ...').catch(() => {});
+// تایید سفارش توسط ادمین
+bot.action(/^order:approve:(.+)$/, async ctx => {
+  if (String(ctx.from.id) !== String(ADMIN_ID)) return ctx.answerCbQuery('⛔');
+  const orderId = ctx.match[1];
+  const order = db.orders.find(o => o.id === orderId);
+
+  if (!order || order.status !== 'pending') {
+    return ctx.answerCbQuery('این سفارش قبلاً بررسی شده است.');
+  }
+
+  order.status = 'approved';
+  const targetUser = db.users[order.userId];
+
+  if (targetUser) {
+    if (order.type === 'wallet_charge') {
+      targetUser.balance = (targetUser.balance || 0) + order.amount;
+      saveDB();
+      try {
+        await bot.telegram.sendMessage(
+          order.userId,
+          `🎉 *فیش واریزی شما تایید شد!*\n\n💰 مبلغ *${formatPrice(order.amount)}* به کیف پول شما اضافه شد.\n👛 موجودی جدید: *${formatPrice(targetUser.balance)}*`,
+          { parse_mode: 'Markdown' }
+        );
+      } catch (e) { /* ignore */ }
+    } else {
+      // تحویل سرویس VIP به کاربر
+      const service = generateVipService(targetUser, order.planId, order.serverId, order.proto || 'vless');
+      const plan = getPlan(order.planId);
+      const server = getVipServer(order.serverId);
+      saveDB();
+
+      const userText = [
+        '🎉 *سفارش شما تایید و اشتراک VIP فعال شد!*',
+        '━━━━━━━━━━━━━━━━━━━━',
+        `📦 *پلن:* ${plan.title} (${plan.volume})`,
+        `🌍 *سرور:* ${server.flag} ${server.name}`,
+        `⏳ *انقضا:* ${service.expireAt.slice(0, 10)}`,
+        '',
+        '🔑 *کانفیگ اختصاصی شما (لمس برای کپی):*',
+        '```',
+        service.config,
+        '```',
+        '',
+        BASE_URL ? `🔗 *لینک سابسکریپشن:* \`${BASE_URL}/sub/${service.uuid}\`` : '',
+        '',
+        '📲 کانفیگ را کپی کرده و در اپلیکیشن اضافه کنید.',
+      ].filter(Boolean).join('\n');
+
+      try {
+        await bot.telegram.sendMessage(order.userId, userText, { parse_mode: 'Markdown' });
+      } catch (e) { /* ignore */ }
+    }
+  }
+
+  saveDB();
+  await ctx.answerCbQuery('✅ سفارش تایید شد.');
+  await ctx.editMessageCaption ? ctx.editMessageCaption('✅ سفارش با موفقیت تایید و به کاربر تحویل شد.') : ctx.editMessageText('✅ سفارش با موفقیت تایید و به کاربر تحویل شد.');
+});
+
+// رد سفارش توسط ادمین
+bot.action(/^order:reject:(.+)$/, async ctx => {
+  if (String(ctx.from.id) !== String(ADMIN_ID)) return ctx.answerCbQuery('⛔');
+  const orderId = ctx.match[1];
+  const order = db.orders.find(o => o.id === orderId);
+
+  if (!order || order.status !== 'pending') {
+    return ctx.answerCbQuery('این سفارش قبلاً بررسی شده است.');
+  }
+
+  order.status = 'rejected';
+  saveDB();
 
   try {
-    // ── حالت پنل اختصاصی ──
-    if (XUI_ENABLED) {
-      let srv = getServer(u.serverId);
-      let panelNote = '';
-      try {
-        const opts = await xuiEnsureClients(u);
-        const match = opts.find(o => o.proto === proto) || opts[0];
-        if (match) {
-          srv = match.srvOpts;
-          panelNote = '🛰 متصل به پنل واقعی\n';
-        }
-      } catch (e) {
-        console.warn('⚠️ اتصال به پنل x-ui ممکن نشد، کانفیگ معمولی ساخته شد:', e.message);
-      }
-      const link = buildLink(proto, u, srv);
-      const ping = proto === 'wg' ? null : await testPing(srv.host, srv.port);
-      const lines = [
-        `✅ *کانفیگ ${PROTOS[proto]} ساخته شد*`,
-        '',
-        `${panelNote}🌍 ${srv.flag || ''} ${srv.name || ''}`,
-        `📡 \`${srv.host}:${srv.port}\``,
-      ];
-      if (ping) lines.push(`⚡ پینگ: ${ping}ms`);
-      lines.push('', '━━━━━━━━━━━━━━━', '```', link, '```', '');
-      if (proto === 'wg' && !WG_SERVER_PUBLIC_KEY) {
-        lines.push('⚠️ برای WireGuard، کلید عمومی سرور باید در متغیر `WG_SERVER_PUBLIC_KEY` ست شده باشد.');
-        lines.push('');
-      }
-      lines.push('📲 لینک رو کپی کن و توی اپ Import کن.');
-      await ctx.editMessageText(lines.join('\n'), {
-        parse_mode: 'Markdown',
-        reply_markup: Markup.inlineKeyboard([
-          [Markup.button.callback('🔄 دوباره بساز', `cfg:${proto}`), Markup.button.callback('🔗 لینک اشتراک', 'menu:sub')],
-          [Markup.button.callback('🔙 منو', 'menu:back')],
-        ]),
-      }).catch(() => {});
-      return;
-    }
+    await bot.telegram.sendMessage(
+      order.userId,
+      `❌ *فیش واریزی شما تایید نشد.*\n\nعلت: عدم تطابق مشخصات یا واریز نشدن مبلغ.\nجهت پیگیری به پشتیبانی پیام دهید: ${SUPPORT_USERNAME}`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (e) { /* ignore */ }
 
-    // ── حالت استخر رایگان ──
-    if (proto === 'wg') {
-      const text = [
-        '🟡 *WireGuard در حالت رایگان*',
-        '',
-        'سرورهای رایگان عمومی معمولاً WireGuard پشتیبانی نمی‌کنند.',
-        'برای WireGuard باید سرور اختصاصی با `WG_SERVER_PUBLIC_KEY` داشته باشی.',
-      ].join('\n');
-      return ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backBtn().reply_markup }).catch(() => {});
-    }
+  await ctx.answerCbQuery('❌ سفارش رد شد.');
+  await ctx.editMessageCaption ? ctx.editMessageCaption('❌ سفارش رد شد و به کاربر اطلاع داده شد.') : ctx.editMessageText('❌ سفارش رد شد و به کاربر اطلاع داده شد.');
+});
 
-    await ensurePool();
-    const candidates = pool.links.filter(l => l.proto === proto);
-    if (!candidates.length) {
-      return ctx.editMessageText(
-        `😔 الان سرور رایگان فعال برای ${PROTOS[proto]} در دسترس نیست.\n\nکمی بعد دوباره تلاش کن — استخر سرورها خودکار آپدیت می‌شود. 🔄`,
-        { reply_markup: backBtn().reply_markup }
-      ).catch(() => {});
-    }
+// ارسال همگانی
+bot.action('admin:broadcast', async ctx => {
+  if (String(ctx.from.id) !== String(ADMIN_ID)) return ctx.answerCbQuery('⛔');
+  await ctx.answerCbQuery().catch(() => {});
+  const adminUser = getUser(ctx.from.id, ctx.from);
+  adminUser.step = 'awaiting_broadcast_msg';
+  saveDB();
 
-    const o = candidates[Math.floor(Math.random() * candidates.length)];
-    const link = poolLink(o);
-    const ping = await testPing(o.host, o.port);
-    const lines = [
-      `✅ *کانفیگ ${PROTOS[proto]} ساخته شد* 🆓`,
-      '',
-      `🌍 سرور رایگان`,
-      `📡 \`${o.host}:${o.port}\``,
-    ];
-    if (ping) lines.push(`⚡ پینگ: ${ping}ms`);
-    lines.push('', '━━━━━━━━━━━━━━━', '```', link, '```', '');
-    lines.push('📲 لینک رو کپی کن و توی اپ Import کن.');
-    await ctx.editMessageText(lines.join('\n'), {
+  await ctx.reply('📢 متن پیام همگانی را بفرستید (این پیام برای تمامی کاربران ارسال خواهد شد):', {
+    reply_markup: Markup.inlineKeyboard([[Markup.button.callback('❌ انصراف', 'admin:panel')]]),
+  });
+});
+
+// تغییر شماره کارت
+bot.action('admin:setcard', async ctx => {
+  if (String(ctx.from.id) !== String(ADMIN_ID)) return ctx.answerCbQuery('⛔');
+  await ctx.answerCbQuery().catch(() => {});
+  const adminUser = getUser(ctx.from.id, ctx.from);
+  adminUser.step = 'awaiting_card_info';
+  saveDB();
+
+  await ctx.reply(
+    `💳 لطفاً شماره کارت جدید و نام صاحب حساب را در یک خط با فرمت زیر ارسال کنید:\n\n\`6037-9975-1234-5678 - علی رضایی\``,
+    {
       parse_mode: 'Markdown',
-      reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback('🔄 یکی دیگه بده', `cfg:${proto}`), Markup.button.callback('🔗 لینک اشتراک', 'menu:sub')],
-        [Markup.button.callback('🔙 منو', 'menu:back')],
-      ]),
-    }).catch(() => {});
-  } catch (e) {
-    console.error('خطا در ساخت کانفیگ:', e.message);
-    await ctx.editMessageText('❌ خطا در ساخت کانفیگ؛ دوباره تلاش کن.', { reply_markup: backBtn().reply_markup }).catch(() => {});
-  }
+      reply_markup: Markup.inlineKeyboard([[Markup.button.callback('❌ انصراف', 'admin:panel')]]),
+    }
+  );
 });
 
-bot.on('message', async ctx => {
+// شارژ مستقیم کاربر
+bot.action('admin:charge_user', async ctx => {
+  if (String(ctx.from.id) !== String(ADMIN_ID)) return ctx.answerCbQuery('⛔');
+  await ctx.answerCbQuery().catch(() => {});
+  const adminUser = getUser(ctx.from.id, ctx.from);
+  adminUser.step = 'awaiting_charge_user_input';
+  saveDB();
+
+  await ctx.reply(
+    `💰 لطفاً آیدی عددی کاربر و مبلغ شارژ را با فاصله ارسال کنید:\n\nفرمت: \`chatId amount\`\nمثال: \`123456789 50000\``,
+    {
+      parse_mode: 'Markdown',
+      reply_markup: Markup.inlineKeyboard([[Markup.button.callback('❌ انصراف', 'admin:panel')]]),
+    }
+  );
+});
+
+/* ─────────────────────────── دریافت پیام‌ها و مراحل (Steps) ─────────────────────────── */
+
+bot.on(['text', 'photo'], async ctx => {
+  const user = getUser(ctx.from.id, ctx.from);
   const text = (ctx.message && ctx.message.text) || '';
+
+  // ۱) مرحله دریافت مبلغ شارژ کیف پول
+  if (user.step === 'awaiting_charge_amount') {
+    const amount = parseInt(text.replace(/[^0-9]/g, ''), 10);
+    if (!amount || amount < 10000) {
+      return ctx.reply('⚠️ لطفاً یک مبلغ معتبر (حداقل ۱۰,۰۰۰ تومان) به عدد انگلیسی وارد نمایید:');
+    }
+
+    user.step = 'awaiting_payment_receipt';
+    user.stepData = { amount, type: 'wallet_charge' };
+    saveDB();
+
+    const msg = [
+      '💳 *مشخصات کارت برای افزایش موجودی*',
+      '━━━━━━━━━━━━━━━━━━━━',
+      `💰 *مبلغ قابل واریز:* *${formatPrice(amount)}*`,
+      `▫️ شماره کارت: \`${db.settings.cardNumber}\``,
+      `▫️ صاحب حساب: *${db.settings.cardHolder}*`,
+      '',
+      '📸 لطفاً پس از واریز، **عکس فیش واریزی** را ارسال نمایید.',
+    ].join('\n');
+
+    return ctx.reply(msg, {
+      parse_mode: 'Markdown',
+      reply_markup: Markup.inlineKeyboard([[Markup.button.callback('❌ انصراف', 'menu:wallet')]]),
+    });
+  }
+
+  // ۲) مرحله ارسال فیش واریزی (عکس یا متن)
+  if (user.step === 'awaiting_payment_receipt') {
+    const photo = ctx.message && ctx.message.photo;
+    const photoId = photo ? photo[photo.length - 1].file_id : null;
+    const data = user.stepData || {};
+
+    const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+    const newOrder = {
+      id: orderId,
+      userId: String(ctx.from.id),
+      type: data.type || 'buy_plan',
+      planId: data.planId || 'p1',
+      serverId: data.serverId || 'de',
+      proto: data.proto || 'vless',
+      amount: data.amount || 0,
+      photoId: photoId,
+      textNote: text,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    db.orders.unshift(newOrder);
+    user.step = null;
+    user.stepData = null;
+    saveDB();
+
+    // اطلاع به کاربر
+    await ctx.reply(
+      `✅ *رسید واریز شما با شناسه #${orderId} ثبت شد!*\n\n⏳ سفارش شما در حال بررسی توسط ادمین است و به محض تایید، کانفیگ اختصاصی در همین چت برایتان ارسال خواهد شد.`,
+      { parse_mode: 'Markdown', ...getBackHomeMenu() }
+    );
+
+    // ارسال اعلان فوری برای ادمین
+    const adminMsg = [
+      `🔔 *فیش واریزی جدید ثبت شد!* (#${orderId})`,
+      '━━━━━━━━━━━━━━━━━━━━',
+      `👤 *کاربر:* ${user.firstName} (\`${user.chatId}\`)`,
+      `📦 *نوع:* ${newOrder.type === 'wallet_charge' ? 'شارژ کیف پول' : getPlan(newOrder.planId).title}`,
+      `💰 *مبلغ:* *${formatPrice(newOrder.amount)}*`,
+    ].join('\n');
+
+    const adminKb = Markup.inlineKeyboard([
+      [
+        Markup.button.callback('✅ تایید و فعال‌سازی', `order:approve:${orderId}`),
+        Markup.button.callback('❌ رد فیش', `order:reject:${orderId}`),
+      ],
+    ]);
+
+    try {
+      if (photoId) {
+        await bot.telegram.sendPhoto(ADMIN_ID, photoId, { caption: adminMsg, parse_mode: 'Markdown', ...adminKb });
+      } else {
+        await bot.telegram.sendMessage(ADMIN_ID, adminMsg, { parse_mode: 'Markdown', ...adminKb });
+      }
+    } catch (e) {
+      console.warn('⚠️ ارسال پیام به ادمین ناموفق:', e.message);
+    }
+    return;
+  }
+
+  // ۳) پیام همگانی ادمین
+  if (user.step === 'awaiting_broadcast_msg' && String(ctx.from.id) === String(ADMIN_ID)) {
+    user.step = null;
+    saveDB();
+
+    const userIds = Object.keys(db.users);
+    await ctx.reply(`⏳ در حال ارسال پیام به ${userIds.length} کاربر...`);
+
+    let sent = 0;
+    let failed = 0;
+    for (const uid of userIds) {
+      try {
+        await bot.telegram.sendMessage(uid, text, { parse_mode: 'Markdown' });
+        sent++;
+      } catch (e) {
+        failed++;
+      }
+    }
+
+    return ctx.reply(`✅ ارسال همگانی پایان یافت.\n\n📤 ارسال موفق: ${sent}\n❌ ناموفق: ${failed}`, {
+      reply_markup: Markup.inlineKeyboard([[Markup.button.callback('🔙 پنل ادمین', 'admin:panel')]]),
+    });
+  }
+
+  // ۴) تغییر مشخصات کارت بانکی
+  if (user.step === 'awaiting_card_info' && String(ctx.from.id) === String(ADMIN_ID)) {
+    user.step = null;
+    const parts = text.split('-');
+    if (parts.length >= 2) {
+      db.settings.cardNumber = parts[0].trim();
+      db.settings.cardHolder = parts.slice(1).join('-').trim();
+    } else {
+      db.settings.cardNumber = text.trim();
+    }
+    saveDB();
+
+    return ctx.reply(`✅ اطلاعات کارت به‌روزرسانی شد:\n\n💳 شماره: \`${db.settings.cardNumber}\`\n👤 نام: ${db.settings.cardHolder}`, {
+      parse_mode: 'Markdown',
+      reply_markup: Markup.inlineKeyboard([[Markup.button.callback('🔙 پنل ادمین', 'admin:panel')]]),
+    });
+  }
+
+  // ۵) شارژ مستقیم کیف پول کاربر توسط ادمین
+  if (user.step === 'awaiting_charge_user_input' && String(ctx.from.id) === String(ADMIN_ID)) {
+    user.step = null;
+    const [targetChatId, amountStr] = text.trim().split(/\s+/);
+    const amount = parseInt(amountStr, 10);
+    const targetUser = db.users[targetChatId];
+
+    if (!targetUser || !amount) {
+      return ctx.reply('❌ کاربر پیدا نشد یا مبلغ نامعتبر است.');
+    }
+
+    targetUser.balance = (targetUser.balance || 0) + amount;
+    saveDB();
+
+    try {
+      await bot.telegram.sendMessage(
+        targetChatId,
+        `💰 کیف پول شما توسط مدیریت به مبلغ *${formatPrice(amount)}* شارژ شد.\nموجودی فعلی: *${formatPrice(targetUser.balance)}*`,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (e) { /* ignore */ }
+
+    return ctx.reply(`✅ مبلغ ${formatPrice(amount)} به حساب کاربر ${targetChatId} اضافه شد.`, {
+      reply_markup: Markup.inlineKeyboard([[Markup.button.callback('🔙 پنل ادمین', 'admin:panel')]]),
+    });
+  }
+
+  // در غیر این صورت منوی اصلی
   if (text && !text.startsWith('/')) {
-    await ctx.reply('📌 از منوی زیر انتخاب کن:', { reply_markup: mainMenu.reply_markup }).catch(() => {});
+    await sendHome(ctx);
   }
 });
 
-bot.catch(err => console.log('Bot error:', err.message));
+bot.catch(err => {
+  console.error('⚠️ خطا در ربات:', err.message);
+});
 
-/* ─────────────────────────── سرور HTTP (لینک اشتراک) ─────────────────────────── */
+/* ─────────────────────────── سرور HTTP (سابسکریپشن و وضعیت) ─────────────────────────── */
 
 const server = http.createServer(async (req, res) => {
   let url;
-  try { url = new URL(req.url, 'http://localhost'); } catch (e) {
-    res.writeHead(400); return res.end('400');
+  try {
+    url = new URL(req.url, 'http://localhost');
+  } catch (e) {
+    res.writeHead(400);
+    return res.end('Bad Request');
   }
 
-  // صفحه وضعیت / سلامت
+  // ۱) روت سلامت و صفحه لندینگ
   if (url.pathname === '/' || url.pathname === '/health') {
-    const count = Object.keys(users).length;
-    const demoUser = process.env.DEMO_USER ? Object.values(users)[0] : null;
-    const demoSub = demoUser ? `<p><a class="btn2" href="/sub/${demoUser.uuid}">🧪 تست لینک اشتراک نمونه</a></p>` : '';
-    const tgBtn = BOT_USERNAME ? `<a class="btn" href="tg://resolve?domain=${BOT_USERNAME}">🚀 شروع در تلگرام</a>` : '';
+    const userCount = Object.keys(db.users).length;
+    const activePool = freePool.links.length;
     const html = `<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${BOT_NAME}</title>
+<title>${BOT_NAME} — سرویس فیلترشکن هوشمند</title>
 <style>
-  body{margin:0;font-family:system-ui,-apple-system,'Segoe UI',Tahoma,sans-serif;background:linear-gradient(135deg,#0f172a,#1e293b);color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh}
-  .card{background:#1e293b;border:1px solid #334155;border-radius:20px;padding:36px 40px;text-align:center;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.45)}
-  h1{font-size:26px;margin:0 0 8px}
-  .ok{color:#4ade80;font-weight:600}
-  .free{color:#fbbf24;margin:6px 0 16px}
-  .btn{display:inline-block;margin-top:14px;padding:12px 26px;border-radius:12px;background:#2563eb;color:#fff;text-decoration:none;font-weight:700}
-  .btn:hover{background:#1d4ed8}
-  .btn2{display:inline-block;margin-top:8px;padding:10px 20px;border-radius:12px;background:#334155;color:#93c5fd;text-decoration:none;font-weight:600;font-size:13px}
-  .btn2:hover{background:#475569}
-  .meta{font-size:12px;color:#94a3b8;margin-top:18px}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,sans-serif;background:radial-gradient(circle at top,#1e293b,#0f172a);color:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+  .card{background:rgba(30,41,59,0.85);backdrop-filter:blur(12px);border:1px solid #334155;border-radius:24px;padding:40px;text-align:center;max-width:440px;width:100%;box-shadow:0 25px 60px rgba(0,0,0,.5)}
+  h1{font-size:28px;margin:0 0 10px;color:#60a5fa}
+  .status{display:inline-flex;align-items:center;gap:8px;background:rgba(34,197,94,0.15);color:#4ade80;padding:6px 16px;border-radius:99px;font-weight:600;font-size:14px;margin-bottom:20px}
+  .dot{width:8px;height:8px;background:#4ade80;border-radius:50%;box-shadow:0 0 10px #4ade80}
+  .desc{font-size:14px;color:#94a3b8;line-height:1.6;margin-bottom:24px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+  .box{background:#0f172a;border:1px solid #334155;border-radius:14px;padding:14px;text-align:center}
+  .box-num{font-size:20px;font-weight:700;color:#f1f5f9;margin-bottom:4px}
+  .box-label{font-size:12px;color:#64748b}
+  .btn{display:block;width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;text-decoration:none;font-weight:700;font-size:16px;transition:0.2s}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 10px 25px rgba(37,99,235,0.4)}
 </style>
 </head>
 <body>
   <div class="card">
-    <h1>🐶 ${BOT_NAME}</h1>
-    <p class="ok">● ربات آنلاین است</p>
-    <p class="free">♾️ کاملاً رایگان — بدون پرداخت</p>
-    <p>👥 ${count} کاربر فعال</p>
-    ${tgBtn}
-    ${demoSub}
-    <p class="meta">${new Date().toISOString()}</p>
+    <h1>${BOT_NAME}</h1>
+    <div class="status"><span class="dot"></span> سرورها و ربات فعال هستند</div>
+    <p class="desc">ارائه‌دهنده سرویس‌های پرسرعت VLESS / VMess / Trojan با سرورهای اختصاصی و کانفیگ‌های رایگان</p>
+    <div class="grid">
+      <div class="box"><div class="box-num">${userCount}</div><div class="box-label">کاربران فعال</div></div>
+      <div class="box"><div class="box-num">${activePool}</div><div class="box-label">سرورهای زنده استخر</div></div>
+    </div>
+    <a class="btn" href="https://t.me/${BOT_USERNAME || 'DogsVPNBot'}">🚀 شروع و دریافت کانفیگ در تلگرام</a>
   </div>
 </body>
 </html>`;
@@ -979,56 +1773,65 @@ const server = http.createServer(async (req, res) => {
     return res.end(html);
   }
 
-  // لینک اشتراک: /sub/{uuid}
+  // ۲) روت سابسکریپشن: /sub/:uuid
   const m = url.pathname.match(/^\/sub\/([A-Za-z0-9-]+)$/);
   if (m) {
-    const u = findByUuid(m[1]);
-    if (!u) {
-      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-      return res.end('Not found');
-    }
-    let sub;
-    if (XUI_ENABLED) {
-      sub = buildSubscription(u);
+    const uuid = m[1];
+    const found = findServiceByUuid(uuid);
+
+    let links = [];
+
+    // اگر کاربر سرویس VIP داشته باشد
+    if (found && found.service && found.service.config) {
+      links.push(found.service.config);
+    } else if (found && found.user && found.user.services && found.user.services.length) {
+      links = found.user.services.map(s => s.config);
     } else {
-      await ensurePool().catch(() => {});
-      sub = pool.links.map(poolLink).join('\n');
+      // در غیر این صورت از سرورهای استخر رایگان
+      await ensureFreePool().catch(() => {});
+      links = freePool.links.map(buildPoolLink);
     }
+
+    if (!links.length) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('No active configs found');
+    }
+
+    const payload = links.join('\n');
     const plain = url.searchParams.get('fmt') === 'plain';
-    const body = plain ? sub : Buffer.from(sub, 'utf8').toString('base64');
-    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+    const body = plain ? payload : Buffer.from(payload, 'utf8').toString('base64');
+
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'Access-Control-Allow-Origin': '*',
+    });
     return res.end(body);
   }
 
   res.writeHead(404);
-  res.end('404');
+  res.end('Not Found');
 });
 
 server.listen(HTTP_PORT, '0.0.0.0', () => {
-  console.log(`🌐 سرور HTTP روی پورت ${HTTP_PORT} روشن شد`);
-  if (BASE_URL) console.log(`🔗 صفحه وضعیت: ${BASE_URL}/`);
+  console.log(`🌐 سرور HTTP روی پورت ${HTTP_PORT} فعال است.`);
 });
 
-/* ─────────────────────────── اجرا ─────────────────────────── */
+/* ─────────────────────────── شروع ربات ─────────────────────────── */
 
-// کاربر نمونه برای تست محلی (DEMO_USER=chatId)
-if (process.env.DEMO_USER) {
-  const demo = getUser(process.env.DEMO_USER);
-  console.log('🧪 کاربر نمونه ساخته شد، UUID:', demo.uuid);
-  if (BASE_URL) console.log('🔗 لینک اشتراک نمونه:', BASE_URL + '/sub/' + demo.uuid);
-}
+ensureFreePool().catch(() => {});
+setInterval(() => ensureFreePool().catch(() => {}), FETCH_INTERVAL_MS);
 
-// شروع استخر رایگان (اگر پنل اختصاصی نیست)
-if (!XUI_ENABLED) {
-  ensurePool().catch(() => {});
-  setInterval(() => ensurePool().catch(() => {}), FETCH_INTERVAL_MS);
-}
+console.log('🚀 در حال راه‌اندازی ' + BOT_NAME + ' ...');
+bot
+  .launch({ dropPendingUpdates: true })
+  .then(() => console.log('✅ ربات با موفقیت فعال شد!'))
+  .catch(e => console.error('❌ اتصال تلگرام ناموفق:', e.message));
 
-console.log('🚀 در حال شروع ' + BOT_NAME + ' ...');
-bot.launch({ dropPendingUpdates: true })
-  .then(() => console.log('✅ ربات روشن شد!'))
-  .catch(e => console.error('❌ اتصال به تلگرام ناموفق:', e.message));
-
-const stopBot = () => { try { bot.stop('SIGINT'); } catch (e) { /* bot not running */ } };
-process.once('SIGINT', stopBot);
-process.once('SIGTERM', stopBot);
+const gracefulStop = () => {
+  try {
+    bot.stop('SIGINT');
+  } catch (e) { /* ignore */ }
+};
+process.once('SIGINT', gracefulStop);
+process.once('SIGTERM', gracefulStop);

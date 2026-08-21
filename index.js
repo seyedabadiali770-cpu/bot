@@ -635,6 +635,8 @@ const server = http.createServer((req, res) => {
   // صفحه وضعیت / سلامت
   if (url.pathname === '/' || url.pathname === '/health') {
     const count = Object.keys(users).length;
+    const demoUser = process.env.DEMO_USER ? findByUuid('') || Object.values(users)[0] : null;
+    const demoSub = demoUser ? `<p><a class="btn2" href="/sub/${demoUser.uuid}">🧪 تست لینک اشتراک نمونه</a></p>` : '';
     const html = `<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
@@ -649,6 +651,8 @@ const server = http.createServer((req, res) => {
   .free{color:#fbbf24;margin:6px 0 16px}
   .btn{display:inline-block;margin-top:14px;padding:12px 26px;border-radius:12px;background:#2563eb;color:#fff;text-decoration:none;font-weight:700}
   .btn:hover{background:#1d4ed8}
+  .btn2{display:inline-block;margin-top:8px;padding:10px 20px;border-radius:12px;background:#334155;color:#93c5fd;text-decoration:none;font-weight:600;font-size:13px}
+  .btn2:hover{background:#475569}
   .meta{font-size:12px;color:#94a3b8;margin-top:18px}
 </style>
 </head>
@@ -659,6 +663,7 @@ const server = http.createServer((req, res) => {
     <p class="free">♾️ کاملاً رایگان — بدون پرداخت</p>
     <p>👥 ${count} کاربر فعال</p>
     <a class="btn" href="tg://resolve?domain=${BOT_USERNAME}">🚀 شروع در تلگرام</a>
+    ${demoSub}
     <p class="meta">${new Date().toISOString()}</p>
   </div>
 </body>

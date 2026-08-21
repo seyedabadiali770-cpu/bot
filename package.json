@@ -1,9 +1,13 @@
 {
   "name": "config-bot",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "description": "🐶 DogsVPN — ربات تلگرامی کانفیگ‌ساز رایگان (V2Ray/Trojan/Shadowsocks/WireGuard + لینک اشتراک)",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
     "telegraf": "^4.16.0"

@@ -1,0 +1,44 @@
+name: Run VPN Bot
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vpn-bot
+  cancel-in-progress: false
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Run bot
+        run: timeout 21000 node index.js
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          BOT_NAME: 🐶 DogsVPN
+
+      - name: Save data
+        if: always()
+        run: |
+          git config user.name "vpn-bot"
+          git config user.email "vpn-bot@users.noreply.github.com"
+          git add -f data
+          git commit -m "bot data $(date -u +%Y-%m-%dT%H:%M:%SZ)" --allow-empty
+          git push || echo "push failed"

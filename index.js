@@ -32,10 +32,12 @@ const path = require('path');
 
 /* ─────────────────────────── تنظیمات ─────────────────────────── */
 
-const BOT_TOKEN = process.env.BOT_TOKEN || '';
+const BOT_TOKEN = (process.env.BOT_TOKEN || process.env.TOKEN || '').trim() || '8688771229:AAGDp0G4pY2-Wky7utOaL0It66gj8MZdR1Q';
+if (!process.env.BOT_TOKEN) {
+  console.warn('⚠️ BOT_TOKEN در متغیرهای محیطی نبود؛ از توکن پیش‌فرض استفاده شد.');
+}
 if (!BOT_TOKEN) {
-  console.error('❌ متغیر محیطی BOT_TOKEN تنظیم نشده است.');
-  console.error('   توکن را از @BotFather بگیرید و در Railway → Variables → BOT_TOKEN بگذارید.');
+  console.error('❌ توکن ربات تنظیم نشده است.');
   process.exit(1);
 }
 

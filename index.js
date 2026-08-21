@@ -40,8 +40,9 @@ if (!BOT_TOKEN) {
 }
 
 const BOT_NAME = process.env.BOT_NAME || '🐶 DogsVPN';
-const BOT_USERNAME = (process.env.BOT_USERNAME || 'dogs_vpnbot').replace('@', '');
-const BASE_URL = (process.env.BASE_URL || '').replace(/\/+$/, '');
+const BOT_USERNAME = (process.env.BOT_USERNAME || '').replace('@', '');
+// آدرس عمومی: اول متغیر BASE_URL، بعد دامنه خودکار Railway، بعد خالی
+const BASE_URL = (process.env.BASE_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '')).replace(/\/+$/, '');
 const HTTP_PORT = Number(process.env.PORT || process.env.HTTP_PORT || 3000);
 const SS_METHOD = process.env.SS_METHOD || 'aes-256-gcm';
 const VLESS_FLOW = process.env.VLESS_FLOW || '';
@@ -940,6 +941,7 @@ const server = http.createServer(async (req, res) => {
     const count = Object.keys(users).length;
     const demoUser = process.env.DEMO_USER ? Object.values(users)[0] : null;
     const demoSub = demoUser ? `<p><a class="btn2" href="/sub/${demoUser.uuid}">🧪 تست لینک اشتراک نمونه</a></p>` : '';
+    const tgBtn = BOT_USERNAME ? `<a class="btn" href="tg://resolve?domain=${BOT_USERNAME}">🚀 شروع در تلگرام</a>` : '';
     const html = `<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
@@ -965,7 +967,7 @@ const server = http.createServer(async (req, res) => {
     <p class="ok">● ربات آنلاین است</p>
     <p class="free">♾️ کاملاً رایگان — بدون پرداخت</p>
     <p>👥 ${count} کاربر فعال</p>
-    <a class="btn" href="tg://resolve?domain=${BOT_USERNAME}">🚀 شروع در تلگرام</a>
+    ${tgBtn}
     ${demoSub}
     <p class="meta">${new Date().toISOString()}</p>
   </div>

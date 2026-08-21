@@ -4,27 +4,23 @@
  * 🐶 DogsVPN — ربات تلگرامی کانفیگ‌ساز رایگان
  * تمام امکانات بدون پرداخت — برای همیشه رایگان ♾️
  *
- * امکانات:
- *  - ساخت کانفیگ VLESS / VMess / Trojan / Shadowsocks / WireGuard
- *  - لینک اشتراک (Subscription) اختصاصی برای هر کاربر
- *  - انتخاب سرور با تست پینگ
- *  - وضعیت حساب per-user
- *  - اتصال اختیاری به پنل 3x-ui (X-UI) برای ساخت واقعی کاربر روی پنل
+ * دو حالت کار:
+ *  ۱) حالت «استخر رایگان» (پیش‌فرض، بدون نیاز به سرور):
+ *     ربات هر FETCH_INTERVAL_MIN دقیقه از منابع عمومی (FREE_SOURCES)
+ *     کانفیگ‌های رایگان واقعی را می‌گیرد، پینگ می‌کند و فقط سرورهای زنده را می‌دهد.
+ *  ۲) حالت «پنل اختصاصی» (اگر XUI_* ست شود):
+ *     کاربر واقعی روی پنل 3x-ui ساخته می‌شود و کانفیگ اختصاصی می‌گیرد.
  *
  * متغیرهای محیطی:
  *  BOT_TOKEN (اجباری) — توکن ربات از @BotFather
- *  BOT_NAME — نام ربات (پیش‌فرض: 🐶 DogsVPN)
- *  BOT_USERNAME — یوزرنیم ربات (برای لینک تلگرام در صفحه وضعیت)
- *  BASE_URL — آدرس عمومی برنامه (برای لینک اشتراک، مثل https://xxx.up.railway.app)
- *  PORT — پورت HTTP (در Railway خودکار ست می‌شود)
- *  SERVERS_JSON — لیست سرورها (اختیاری، JSON)
- *  SS_METHOD — روش رمزنگاری Shadowsocks (پیش‌فرض aes-256-gcm)
- *  VLESS_FLOW — مثل xtls-rprx-vision (اختیاری)
- *  SNI — نام دامنه سرور (اختیاری)
- *  WG_SERVER_PUBLIC_KEY — کلید عمومی سرور WireGuard (اختیاری)
+ *  BOT_NAME / BOT_USERNAME / BASE_URL / PORT
+ *  FREE_SOURCES — JSON آرایه‌ای از آدرس سابسکریپشن‌های رایگان
+ *  POOL_SIZE — حداکثر سرورهای زنده نگه‌داشته‌شده (پیش‌فرض 40)
+ *  FETCH_INTERVAL_MIN — بازه آپدیت استخر (پیش‌فرض 120)
+ *  SERVERS_JSON — سرورهای ثابت برای حالت پنل (اختیاری)
+ *  SS_METHOD / VLESS_FLOW / SNI / WG_SERVER_PUBLIC_KEY
  *  XUI_BASE_URL / XUI_USERNAME / XUI_PASSWORD / XUI_INBOUND_IDS / XUI_CONFIG_HOST
- *      — اتصال به پنل 3x-ui (اختیاری): اگر ست شود، کاربر واقعی روی پنل ساخته می‌شود
- *  DEMO_USER — برای تست محلی: یک کاربر نمونه می‌سازد (اختیاری)
+ *  DEMO_USER — برای تست محلی
  */
 
 const { Telegraf, Markup } = require('telegraf');
@@ -62,7 +58,7 @@ const XUI = {
 };
 const XUI_ENABLED = !!(XUI.base && XUI.username && XUI.password);
 
-/* ─────────────────────────── لیست سرورها ─────────────────────────── */
+/* ─────────────────────────── لیست سرورهای ثابت (حالت پنل) ─────────────────────────── */
 
 const DEFAULT_SERVERS = [
   { id: 'de', flag: '🇩🇪', name: 'آلمان',    host: '185.244.181.12', port: 443, security: 'tls', network: 'tcp' },
@@ -144,7 +140,7 @@ function safeParse(str, fallback) {
 function testPing(host, port) {
   return new Promise(resolve => {
     const socket = new net.Socket();
-    socket.setTimeout(5000);
+    socket.setTimeout(4000);
     const t = Date.now();
     socket.on('connect', () => { socket.destroy(); resolve(Date.now() - t); });
     socket.on('error', () => resolve(null));
@@ -154,7 +150,235 @@ function testPing(host, port) {
 }
 
 function cfgName(s) {
-  return `${BOT_NAME} — ${s.flag} ${s.name}`;
+  return `${BOT_NAME} — ${s.flag || ''} ${s.name || ''}`.trim();
+}
+
+/* ─────────────────────────── استخر سرورهای رایگان ─────────────────────────── */
+
+const POOL_FILE = path.join(DATA_DIR, 'pool.json');
+
+let pool = { fetchedAt: 0, links: [], fetching: false };
+try {
+  const saved = safeParse(fs.readFileSync(POOL_FILE, 'utf8'), null);
+  if (saved && Array.isArray(saved.links)) pool = { fetchedAt: saved.fetchedAt || 0, links: saved.links, fetching: false };
+} catch (e) { /* اولین اجرا */ }
+
+const DEFAULT_FREE_SOURCES = [
+  'https://raw.githubusercontent.com/freefq/free/master/v2',
+  'https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub',
+];
+
+let FREE_SOURCES = DEFAULT_FREE_SOURCES;
+try {
+  if (process.env.FREE_SOURCES) {
+    const arr = JSON.parse(process.env.FREE_SOURCES);
+    if (Array.isArray(arr) && arr.length) FREE_SOURCES = arr;
+  }
+} catch (e) { /* پیش‌فرض */ }
+
+const POOL_SIZE = Math.max(5, Number(process.env.POOL_SIZE || 40));
+const FETCH_INTERVAL_MS = Math.max(15, Number(process.env.FETCH_INTERVAL_MIN || 120)) * 60000;
+const POOL_REFRESH_MS = Math.max(2, Number(process.env.POOL_REFRESH_MIN || 30)) * 60000;
+// فقط برای تست: بدون تست پینگ همه لینک‌ها نگه داشته می‌شوند
+const POOL_NO_PING = process.env.POOL_NO_PING === '1';
+
+/* پارس لینک‌های کانفیگ */
+
+const HOST_RE = /^[a-zA-Z0-9][a-zA-Z0-9.\-]*$/;
+
+function validHostPort(host, port) {
+  return !!host && HOST_RE.test(host) && port > 0 && port <= 65535;
+}
+
+function parseVmessB64(b64) {
+  try {
+    const o = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
+    if (!o.add || !o.port || !o.id) return null;
+    const host = String(o.add).trim();
+    const port = Number(o.port);
+    if (!validHostPort(host, port)) return null;
+    return {
+      proto: 'vmess',
+      host,
+      port,
+      id: String(o.id).trim(),
+      aid: String(o.aid || '0'),
+      security: (o.tls === 'tls' || o.tls === true) ? 'tls' : 'none',
+      network: String(o.net || 'tcp'),
+      path: String(o.path || ''),
+      hostHeader: String(o.host || ''),
+      sni: String(o.sni || ''),
+    };
+  } catch (e) { return null; }
+}
+
+function parseVlessTrojan(link) {
+  try {
+    const u = new URL(link);
+    const proto = u.protocol.replace(':', '');
+    if (proto !== 'vless' && proto !== 'trojan') return null;
+    const p = u.searchParams;
+    const sec = p.get('security') || (proto === 'trojan' ? 'tls' : 'none');
+    const host = u.hostname;
+    const port = Number(u.port || (sec === 'none' ? 80 : 443));
+    if (!validHostPort(host, port) || !u.username) return null;
+    return {
+      proto,
+      host,
+      port,
+      id: decodeURIComponent(u.username),
+      security: sec,
+      network: p.get('type') || 'tcp',
+      path: p.get('path') || '',
+      hostHeader: p.get('host') || '',
+      sni: p.get('sni') || '',
+      flow: p.get('flow') || '',
+      pbk: p.get('pbk') || '',
+      sid: p.get('sid') || '',
+      fp: p.get('fp') || '',
+    };
+  } catch (e) { return null; }
+}
+
+function parseSs(link) {
+  try {
+    let rest = link.slice(5);
+    if (rest.includes('@')) {
+      // ss://base64(method:pass)@host:port#name
+      const at = rest.indexOf('@');
+      const hp = rest.slice(at + 1).split('#')[0];
+      const colon = hp.lastIndexOf(':');
+      if (colon <= 0) return null;
+      const [method, pass] = Buffer.from(rest.slice(0, at), 'base64').toString('utf8').split(':');
+      if (!method || !pass) return null;
+      const host = hp.slice(0, colon);
+      const port = Number(hp.slice(colon + 1));
+      if (!validHostPort(host, port)) return null;
+      return { proto: 'ss', host, port, method, ssPass: pass };
+    }
+    // ss://base64(method:pass@host:port)#name
+    const core = rest.split('#')[0];
+    const dec = Buffer.from(core, 'base64').toString('utf8');
+    const at = dec.lastIndexOf('@');
+    if (at <= 0) return null;
+    const hp = dec.slice(at + 1);
+    const colon = hp.lastIndexOf(':');
+    if (colon <= 0) return null;
+    const [method, pass] = dec.slice(0, at).split(':');
+    if (!method || !pass) return null;
+    const host = hp.slice(0, colon);
+    const port = Number(hp.slice(colon + 1));
+    if (!validHostPort(host, port)) return null;
+    return { proto: 'ss', host, port, method, ssPass: pass };
+  } catch (e) { return null; }
+}
+
+function parseLink(line) {
+  const l = String(line || '').trim();
+  if (!l || !l.includes('://')) return null;
+  if (l.startsWith('vmess://')) {
+    const rest = l.slice(8).split('#')[0];
+    if (rest.includes('@')) return null; // فرم جدید vmess پشتیبانی نمی‌شود
+    return parseVmessB64(rest);
+  }
+  if (l.startsWith('vless://') || l.startsWith('trojan://')) return parseVlessTrojan(l);
+  if (l.startsWith('ss://')) return parseSs(l);
+  return null;
+}
+
+/* دریافت منابع */
+
+async function httpGet(url) {
+  const res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error('http ' + res.status);
+  return res.text();
+}
+
+async function fetchSource(url) {
+  let body;
+  try {
+    body = await httpGet(url);
+  } catch (e) {
+    // fallback: raw.githubusercontent.com از این سندباکس مسدود است → api.github.com
+    const m = url.match(/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)/);
+    if (!m) throw e;
+    const apiUrl = `https://api.github.com/repos/${m[1]}/${m[2]}/contents/${m[4]}?ref=${m[3]}`;
+    const j = safeParse(await httpGet(apiUrl), null);
+    if (!j || !j.content) throw new Error('api github: empty');
+    body = Buffer.from(j.content, 'base64').toString('utf8');
+  }
+  const lines = body.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  if (lines.some(l => l.includes('://'))) return lines;
+  // احتمالاً base64 کل بدنه
+  try {
+    const dec = Buffer.from(body.replace(/\s+/g, ''), 'base64').toString('utf8');
+    const dlines = dec.split(/\r?\n/).map(s => s.trim()).filter(s => s.includes('://'));
+    if (dlines.length) return dlines;
+  } catch (e) { /* not base64 */ }
+  return lines;
+}
+
+/* ساخت و به‌روزرسانی استخر */
+
+async function buildPool() {
+  const all = [];
+  for (const url of FREE_SOURCES) {
+    try {
+      const lines = await fetchSource(url);
+      for (const l of lines) {
+        const o = parseLink(l);
+        if (o) all.push(o);
+      }
+      console.log(`📥 منبع استخر: ${url} → ${lines.length} لینک، ${all.length} پارس‌شده`);
+    } catch (e) {
+      console.warn(`⚠️ منبع استخر در دسترس نبود: ${url} — ${e.message}`);
+    }
+  }
+
+  // حذف تکراری‌ها
+  const seen = new Set();
+  const uniq = [];
+  for (const o of all) {
+    const k = o.proto + '|' + o.host + '|' + o.port + '|' + (o.id || o.ssPass);
+    if (!seen.has(k)) { seen.add(k); uniq.push(o); }
+  }
+
+  let links = uniq;
+  if (!POOL_NO_PING) {
+    // تست زنده‌بودن با پینگ
+    const hosts = [...new Set(uniq.map(o => o.host + ':' + o.port))];
+    const pings = new Map();
+    let idx = 0;
+    const worker = async () => {
+      while (idx < hosts.length) {
+        const key = hosts[idx++];
+        const sep = key.lastIndexOf(':');
+        pings.set(key, await testPing(key.slice(0, sep), Number(key.slice(sep + 1))));
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(12, hosts.length) }, worker));
+    const alive = uniq.filter(o => pings.get(o.host + ':' + o.port) !== null);
+    alive.forEach(o => { o.ping = pings.get(o.host + ':' + o.port); });
+    alive.sort((a, b) => a.ping - b.ping);
+    links = alive.slice(0, POOL_SIZE);
+    console.log(`✅ استخر: ${alive.length} سرور زنده از ${uniq.length} → ${links.length} نگه‌داشته شد`);
+  } else {
+    links = uniq.slice(0, POOL_SIZE);
+    console.log(`🧪 حالت تست: ${links.length} سرور بدون تست پینگ نگه داشته شد`);
+  }
+
+  pool = { fetchedAt: Date.now(), links, fetching: false };
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(POOL_FILE, JSON.stringify(pool, null, 2));
+  } catch (e) { /* غیرحیاتی */ }
+}
+
+async function ensurePool() {
+  if (pool.fetching) return;
+  if (pool.links.length && Date.now() - pool.fetchedAt < POOL_REFRESH_MS) return;
+  pool.fetching = true;
+  try { await buildPool(); } catch (e) { console.warn('⚠️ به‌روزرسانی استخر ناموفق:', e.message); }
 }
 
 /* ─────────────────────────── ساخت لینک کانفیگ ─────────────────────────── */
@@ -211,7 +435,7 @@ function buildLink(proto, u, s) {
   }
 
   if (proto === 'ss') {
-    const method = SS_METHOD;
+    const method = s.method || SS_METHOD;
     const payload = Buffer.from(`${method}:${u.ssPass}`, 'utf8').toString('base64');
     return `ss://${payload}@${s.host}:${s.port}#${name}`;
   }
@@ -240,6 +464,28 @@ function buildSubscription(u) {
   return ['vless', 'vmess', 'trojan', 'ss']
     .map(p => buildLink(p, u, s))
     .join('\n');
+}
+
+/* بازسازی لینک سرور استخر با برند خودمان */
+function poolLink(o) {
+  const s = {
+    host: o.host,
+    port: o.port,
+    security: o.security || 'none',
+    network: o.network || 'tcp',
+    path: o.path || '',
+    hostHeader: o.hostHeader || '',
+    sni: o.sni || '',
+    flow: o.flow || '',
+    pbk: o.pbk || '',
+    sid: o.sid || '',
+    fp: o.fp || '',
+    method: o.method || '',
+    flag: '🆓',
+    name: 'رایگان',
+  };
+  const creds = { uuid: o.id || o.ssPass || genUUID(), ssPass: o.ssPass || o.id || genUUID() };
+  return buildLink(o.proto, creds, s);
 }
 
 /* ─────────────────────────── اتصال به پنل 3x-ui (اختیاری) ─────────────────────────── */
@@ -380,15 +626,15 @@ function serverMenu() {
 const PROTOS = { vless: 'VLESS', vmess: 'VMess', trojan: 'Trojan', ss: 'Shadowsocks', wg: 'WireGuard' };
 
 function welcomeText() {
+  const mode = XUI_ENABLED ? '🛰 پنل اختصاصی' : '🆓 استخر سرورهای رایگان (به‌روزرسانی خودکار)';
   return [
     `${BOT_NAME}`,
     '━━━━━━━━━━━━━━━',
     '✅ *کاملاً رایگان برای همیشه*',
     '🚫 بدون پرداخت، بدون اشتراک، بدون محدودیت',
     '',
-    '✨ امکانات:',
-    `▫️ ساخت کانفیگ از ${SERVERS.length} سرور`,
-    '▫️ پروتکل‌های VLESS ،VMess ،Trojan ،Shadowsocks و WireGuard',
+    `✨ حالت فعلی: ${mode}`,
+    '▫️ کانفیگ: VLESS ،VMess ،Trojan ،Shadowsocks ،WireGuard',
     '▫️ لینک اشتراک اختصاصی برای همه دستگاه‌ها',
     '',
     '👇 از منو انتخاب کن:',
@@ -420,19 +666,22 @@ bot.command(['help', 'menu'], async ctx => {
 
 bot.command('status', async ctx => {
   const u = getUser(ctx.from.id);
-  const srv = getServer(u.serverId);
   const lines = [
     '📊 *وضعیت حساب*',
     '',
     `👤 نام: ${ctx.from.first_name || '—'}`,
     `🆔 آیدی: \`${u.chatId}\``,
     `🔑 UUID: \`${u.uuid}\``,
-    `🌍 سرور: ${srv.flag} ${srv.name} — \`${srv.host}:${srv.port}\``,
     `📅 عضویت: ${u.createdAt.slice(0, 10)}`,
-    '',
-    '💰 هزینه: **رایگان ♾️**',
-    '⏳ انقضا: ندارد — برای همیشه فعال',
   ];
+  if (XUI_ENABLED) {
+    const srv = getServer(u.serverId);
+    lines.push(`🌍 سرور: ${srv.flag} ${srv.name} — \`${srv.host}:${srv.port}\``);
+  } else {
+    lines.push(`🆓 استخر رایگان: ${pool.links.length} سرور زنده`);
+    lines.push(`🔄 آخرین آپدیت: ${pool.fetchedAt ? new Date(pool.fetchedAt).toLocaleString('fa-IR') : 'در حال بارگیری...'}`);
+  }
+  lines.push('', '💰 هزینه: **رایگان ♾️**', '⏳ انقضا: ندارد — برای همیشه فعال');
   if (BASE_URL) lines.push('', `🔗 اشتراک: \`${BASE_URL}/sub/${u.uuid}\``);
   await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', reply_markup: mainMenu.reply_markup }).catch(() => {});
 });
@@ -469,7 +718,18 @@ bot.action('menu:config', async ctx => {
 
 bot.action('menu:server', async ctx => {
   await ctx.answerCbQuery().catch(() => {});
-  await ctx.editMessageText('🌍 سرور مورد نظرت رو انتخاب کن:', { reply_markup: serverMenu().reply_markup }).catch(() => {});
+  if (XUI_ENABLED) {
+    await ctx.editMessageText('🌍 سرور مورد نظرت رو انتخاب کن:', { reply_markup: serverMenu().reply_markup }).catch(() => {});
+  } else {
+    const text = [
+      '🌍 *حالت استخر رایگان*',
+      '',
+      'سرورها به‌صورت خودکار از بین سرورهای رایگانِ در دسترس انتخاب می‌شوند و هر چند ساعت آپدیت می‌شوند.',
+      '',
+      `🔢 الان ${pool.links.length} سرور زنده توی استخر هست.`,
+    ].join('\n');
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backBtn().reply_markup }).catch(() => {});
+  }
 });
 
 bot.action('menu:help', async ctx => {
@@ -489,7 +749,9 @@ bot.action('menu:help', async ctx => {
     '   ➕ → Import from Clipboard',
     '',
     '▫️ همه‌چیز رایگانه، بدون محدودیت ♾️',
-    '▫️ سرور دلخواهت رو از «🌍 تغییر سرور» انتخاب کن',
+    XUI_ENABLED ? '▫️ سرور دلخواهت رو از «🌍 تغییر سرور» انتخاب کن' : '▫️ سرورها خودکار از استخر رایگان انتخاب می‌شوند',
+    '',
+    '⚠️ سرورهای رایگان عمومی هستند؛ برای حریم خصوصی بیشتر، سرور اختصاصی بهتر است.',
   ].join('\n');
   await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backBtn().reply_markup }).catch(() => {});
 });
@@ -518,19 +780,22 @@ bot.action('menu:sub', async ctx => {
 bot.action('menu:status', async ctx => {
   await ctx.answerCbQuery().catch(() => {});
   const u = getUser(ctx.from.id);
-  const srv = getServer(u.serverId);
   const lines = [
     '📊 *وضعیت حساب*',
     '',
     `👤 نام: ${ctx.from.first_name || '—'}`,
     `🆔 آیدی: \`${u.chatId}\``,
     `🔑 UUID: \`${u.uuid}\``,
-    `🌍 سرور: ${srv.flag} ${srv.name} — \`${srv.host}:${srv.port}\``,
     `📅 عضویت: ${u.createdAt.slice(0, 10)}`,
-    '',
-    '💰 هزینه: **رایگان ♾️**',
-    '⏳ انقضا: ندارد — برای همیشه فعال',
   ];
+  if (XUI_ENABLED) {
+    const srv = getServer(u.serverId);
+    lines.push(`🌍 سرور: ${srv.flag} ${srv.name} — \`${srv.host}:${srv.port}\``);
+  } else {
+    lines.push(`🆓 استخر رایگان: ${pool.links.length} سرور زنده`);
+    lines.push(`🔄 آخرین آپدیت: ${pool.fetchedAt ? new Date(pool.fetchedAt).toLocaleString('fa-IR') : 'در حال بارگیری...'}`);
+  }
+  lines.push('', '💰 هزینه: **رایگان ♾️**', '⏳ انقضا: ندارد — برای همیشه فعال');
   if (BASE_URL) lines.push('', `🔗 اشتراک: \`${BASE_URL}/sub/${u.uuid}\``);
   await ctx.editMessageText(lines.join('\n'), { parse_mode: 'Markdown', reply_markup: backBtn().reply_markup }).catch(() => {});
 });
@@ -569,10 +834,10 @@ bot.action(/^cfg:(vless|vmess|trojan|ss|wg)$/, async ctx => {
   await ctx.editMessageText('⏳ در حال ساخت کانفیگ...').catch(() => {});
 
   try {
-    let srv = getServer(u.serverId);
-    let panelNote = '';
-
+    // ── حالت پنل اختصاصی ──
     if (XUI_ENABLED) {
+      let srv = getServer(u.serverId);
+      let panelNote = '';
       try {
         const opts = await xuiEnsureClients(u);
         const match = opts.find(o => o.proto === proto) || opts[0];
@@ -583,29 +848,67 @@ bot.action(/^cfg:(vless|vmess|trojan|ss|wg)$/, async ctx => {
       } catch (e) {
         console.warn('⚠️ اتصال به پنل x-ui ممکن نشد، کانفیگ معمولی ساخته شد:', e.message);
       }
+      const link = buildLink(proto, u, srv);
+      const ping = proto === 'wg' ? null : await testPing(srv.host, srv.port);
+      const lines = [
+        `✅ *کانفیگ ${PROTOS[proto]} ساخته شد*`,
+        '',
+        `${panelNote}🌍 ${srv.flag || ''} ${srv.name || ''}`,
+        `📡 \`${srv.host}:${srv.port}\``,
+      ];
+      if (ping) lines.push(`⚡ پینگ: ${ping}ms`);
+      lines.push('', '━━━━━━━━━━━━━━━', '```', link, '```', '');
+      if (proto === 'wg' && !WG_SERVER_PUBLIC_KEY) {
+        lines.push('⚠️ برای WireGuard، کلید عمومی سرور باید در متغیر `WG_SERVER_PUBLIC_KEY` ست شده باشد.');
+        lines.push('');
+      }
+      lines.push('📲 لینک رو کپی کن و توی اپ Import کن.');
+      await ctx.editMessageText(lines.join('\n'), {
+        parse_mode: 'Markdown',
+        reply_markup: Markup.inlineKeyboard([
+          [Markup.button.callback('🔄 دوباره بساز', `cfg:${proto}`), Markup.button.callback('🔗 لینک اشتراک', 'menu:sub')],
+          [Markup.button.callback('🔙 منو', 'menu:back')],
+        ]),
+      }).catch(() => {});
+      return;
     }
 
-    const link = buildLink(proto, u, srv);
-    const ping = proto === 'wg' ? null : await testPing(srv.host, srv.port);
+    // ── حالت استخر رایگان ──
+    if (proto === 'wg') {
+      const text = [
+        '🟡 *WireGuard در حالت رایگان*',
+        '',
+        'سرورهای رایگان عمومی معمولاً WireGuard پشتیبانی نمی‌کنند.',
+        'برای WireGuard باید سرور اختصاصی با `WG_SERVER_PUBLIC_KEY` داشته باشی.',
+      ].join('\n');
+      return ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: backBtn().reply_markup }).catch(() => {});
+    }
 
+    await ensurePool();
+    const candidates = pool.links.filter(l => l.proto === proto);
+    if (!candidates.length) {
+      return ctx.editMessageText(
+        `😔 الان سرور رایگان فعال برای ${PROTOS[proto]} در دسترس نیست.\n\nکمی بعد دوباره تلاش کن — استخر سرورها خودکار آپدیت می‌شود. 🔄`,
+        { reply_markup: backBtn().reply_markup }
+      ).catch(() => {});
+    }
+
+    const o = candidates[Math.floor(Math.random() * candidates.length)];
+    const link = poolLink(o);
+    const ping = await testPing(o.host, o.port);
     const lines = [
-      `✅ *کانفیگ ${PROTOS[proto]} ساخته شد*`,
+      `✅ *کانفیگ ${PROTOS[proto]} ساخته شد* 🆓`,
       '',
-      `${panelNote}🌍 ${srv.flag || ''} ${srv.name || ''}`,
-      `📡 \`${srv.host}:${srv.port}\``,
+      `🌍 سرور رایگان`,
+      `📡 \`${o.host}:${o.port}\``,
     ];
     if (ping) lines.push(`⚡ پینگ: ${ping}ms`);
     lines.push('', '━━━━━━━━━━━━━━━', '```', link, '```', '');
-    if (proto === 'wg') {
-      lines.push('⚠️ برای WireGuard، کلید عمومی سرور باید در متغیر `WG_SERVER_PUBLIC_KEY` ست شده باشد.');
-      lines.push('');
-    }
     lines.push('📲 لینک رو کپی کن و توی اپ Import کن.');
-
     await ctx.editMessageText(lines.join('\n'), {
       parse_mode: 'Markdown',
       reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback('🔄 دوباره بساز', `cfg:${proto}`), Markup.button.callback('🔗 لینک اشتراک', 'menu:sub')],
+        [Markup.button.callback('🔄 یکی دیگه بده', `cfg:${proto}`), Markup.button.callback('🔗 لینک اشتراک', 'menu:sub')],
         [Markup.button.callback('🔙 منو', 'menu:back')],
       ]),
     }).catch(() => {});
@@ -626,7 +929,7 @@ bot.catch(err => console.log('Bot error:', err.message));
 
 /* ─────────────────────────── سرور HTTP (لینک اشتراک) ─────────────────────────── */
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   let url;
   try { url = new URL(req.url, 'http://localhost'); } catch (e) {
     res.writeHead(400); return res.end('400');
@@ -635,7 +938,7 @@ const server = http.createServer((req, res) => {
   // صفحه وضعیت / سلامت
   if (url.pathname === '/' || url.pathname === '/health') {
     const count = Object.keys(users).length;
-    const demoUser = process.env.DEMO_USER ? findByUuid('') || Object.values(users)[0] : null;
+    const demoUser = process.env.DEMO_USER ? Object.values(users)[0] : null;
     const demoSub = demoUser ? `<p><a class="btn2" href="/sub/${demoUser.uuid}">🧪 تست لینک اشتراک نمونه</a></p>` : '';
     const html = `<!doctype html>
 <html lang="fa" dir="rtl">
@@ -680,7 +983,13 @@ const server = http.createServer((req, res) => {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       return res.end('Not found');
     }
-    const sub = buildSubscription(u);
+    let sub;
+    if (XUI_ENABLED) {
+      sub = buildSubscription(u);
+    } else {
+      await ensurePool().catch(() => {});
+      sub = pool.links.map(poolLink).join('\n');
+    }
     const plain = url.searchParams.get('fmt') === 'plain';
     const body = plain ? sub : Buffer.from(sub, 'utf8').toString('base64');
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -696,6 +1005,8 @@ server.listen(HTTP_PORT, '0.0.0.0', () => {
   if (BASE_URL) console.log(`🔗 صفحه وضعیت: ${BASE_URL}/`);
 });
 
+/* ─────────────────────────── اجرا ─────────────────────────── */
+
 // کاربر نمونه برای تست محلی (DEMO_USER=chatId)
 if (process.env.DEMO_USER) {
   const demo = getUser(process.env.DEMO_USER);
@@ -703,7 +1014,11 @@ if (process.env.DEMO_USER) {
   if (BASE_URL) console.log('🔗 لینک اشتراک نمونه:', BASE_URL + '/sub/' + demo.uuid);
 }
 
-/* ─────────────────────────── اجرا ─────────────────────────── */
+// شروع استخر رایگان (اگر پنل اختصاصی نیست)
+if (!XUI_ENABLED) {
+  ensurePool().catch(() => {});
+  setInterval(() => ensurePool().catch(() => {}), FETCH_INTERVAL_MS);
+}
 
 console.log('🚀 در حال شروع ' + BOT_NAME + ' ...');
 bot.launch({ dropPendingUpdates: true })

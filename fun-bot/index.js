@@ -13,7 +13,7 @@ const { Telegraf, Markup } = require('telegraf');
 const BOT_TOKEN = (
   process.env.FUN_BOT_TOKEN ||
   process.env.BOT_TOKEN_FUN ||
-  '8552382239:AAGi8jhxk_PV0DsNQLoFP9cHoWIZ3Eqq8bY'
+  '8552382239:AAEElINJciv_3N69oJmHFluDb8fdBYWu1wI'
 ).trim();
 
 const BOT_NAME = process.env.FUN_BOT_NAME || '🎪 سرگرمی بات';

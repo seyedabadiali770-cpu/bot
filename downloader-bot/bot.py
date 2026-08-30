@@ -33,6 +33,9 @@ logger = logging.getLogger(__name__)
 # لینک‌های در انتظار کاربر (id → url)
 PENDING: dict[str, str] = {}
 
+# نتایج جستجوی ویدیوهای مرتبط (id → list)
+SEARCH_RESULTS: dict[str, list] = {}
+
 # آمار ساده‌ی درون‌حافظه‌ای
 STATS = {"downloads": 0, "errors": 0, "users": set()}
 
@@ -43,6 +46,7 @@ HELP_TEXT = (
     "📹 <b>۷۲۰p / ۴۸۰p</b> — کیفیت کمتر، حجم کمتر\n"
     "🎵 <b>صدا MP3</b> — جدا کردن موزیک از ویدیو\n"
     "ℹ️ <b>اطلاعات</b> — عنوان، مدت، بازدید\n"
+    "🔍 <b>ویدیوهای مرتبط</b> — پیشنهاد ویدیوهای مشابه\n"
     "📃 <b>لیست پخش</b> — چند ویدیوی اول (یوتیوب)\n\n"
     "<b>پلتفرم‌ها:</b>\n"
     "▶️ یوتیوب • 📸 اینستاگرام • 🎵 تیک‌تاک\n"
@@ -109,6 +113,7 @@ def _menu_keyboard(pid: str, platform: str) -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton("ℹ️ اطلاعات", callback_data=f"i:{pid}"),
+            InlineKeyboardButton("🔍 ویدیوهای مرتبط", callback_data=f"rel:{pid}"),
         ],
     ]
     if platform == "youtube":
@@ -276,6 +281,43 @@ async def _show_info(update: Update, context: ContextTypes.DEFAULT_TYPE, url: st
 
 
 # ---------------------------------------------------------------------------
+# ویدیوهای مرتبط
+# ---------------------------------------------------------------------------
+async def _show_related(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, url: str, msg=None
+) -> None:
+    if msg is not None:
+        status = msg
+        await status.edit_text("🔍 در حال جستجوی ویدیوهای مرتبط...")
+    else:
+        status = await update.message.reply_text("🔍 در حال جستجوی ویدیوهای مرتبط...")
+
+    # عنوان ویدیوی فعلی را پیدا کن و بر اساس آن جستجو کن
+    info = await asyncio.to_thread(downloader.get_info, url)
+    query = info.title if (info.ok and info.title) else url
+    results = await asyncio.to_thread(downloader.search, query, 5)
+
+    if not results:
+        await status.edit_text("❌ ویدیوی مرتبطی پیدا نشد.")
+        return
+
+    sid = uuid.uuid4().hex[:10]
+    SEARCH_RESULTS[sid] = results
+
+    buttons = []
+    for idx, r in enumerate(results):
+        dur = downloader.format_duration(r["duration"])
+        label = f"{idx + 1}. {r['title'][:40]} ({dur})"
+        buttons.append([InlineKeyboardButton(label, callback_data=f"rs:{sid}:{idx}")])
+
+    await status.edit_text(
+        f"🔍 نتایج مرتبط با «{query[:50]}»:\n"
+        f"برای دانلود یکی را انتخاب کن 👇",
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
+
+
+# ---------------------------------------------------------------------------
 # لیست پخش
 # ---------------------------------------------------------------------------
 async def _process_playlist(
@@ -383,6 +425,28 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if data == "nothing":
         return
 
+    # انتخاب یک ویدیو از نتایج مرتبط
+    if data.startswith("rs:"):
+        try:
+            _, sid, idx = data.split(":")
+        except ValueError:
+            return
+        results = SEARCH_RESULTS.get(sid)
+        if not results:
+            await msg.edit_text("⏰ نتایج منقضی شده؛ دوباره تلاش کن.")
+            return
+        try:
+            r = results[int(idx)]
+        except (IndexError, ValueError):
+            await msg.edit_text("خطا در انتخاب.")
+            return
+        SEARCH_RESULTS.pop(sid, None)
+        await _process_and_send(
+            update, context, r["url"], prefer_audio=False, quality="best",
+            msg=msg, via_callback=True,
+        )
+        return
+
     parts = data.split(":")
     action, pid = parts[0], parts[-1]
     url = PENDING.get(pid)
@@ -398,6 +462,8 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 update, context, url, prefer_audio=True, quality="best",
                 msg=msg, via_callback=True,
             )
+        elif action == "rel":
+            await _show_related(update, context, url, msg=msg)
         elif action == "pl":
             await _process_playlist(update, context, url, msg=msg)
         elif action == "v":

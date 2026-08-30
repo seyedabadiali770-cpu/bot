@@ -288,6 +288,38 @@ def download_playlist(
     return results
 
 
+def search(query: str, limit: int = 5) -> list[dict]:
+    """جستجوی ویدیوهای مرتبط در یوتیوب بر اساس عنوان/عبارت."""
+    results: list[dict] = []
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "noplaylist": True,
+        "socket_timeout": 30,
+        "extract_flat": True,
+    }
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(f"ytsearch{limit}:{query}", download=False)
+            for e in info.get("entries") or []:
+                if not e:
+                    continue
+                vid = e.get("id")
+                results.append(
+                    {
+                        "id": vid,
+                        "title": e.get("title") or "بدون عنوان",
+                        "duration": e.get("duration") or 0,
+                        "channel": e.get("channel") or e.get("uploader") or "—",
+                        "url": e.get("webpage_url") or (f"https://youtu.be/{vid}" if vid else ""),
+                    }
+                )
+    except Exception:  # noqa: BLE001
+        pass
+    return results
+
+
 def cleanup(filepath: str) -> None:
     """حذف فایل دانلودشده (و دایرکتوری موقت آن)."""
     try:

@@ -1,7 +1,7 @@
 /* ============================================================
    🎪 سرگرمی بات — ربات تلگرامی سرگرمی فارسی
-   جوک، فال حافظ، اسلات، حدس عدد، شیر یا خط، تاس، توپ جادویی،
-   محاسبه عشق، امتیاز و سطح، برترین کاربران
+   جوک، فال حافظ، اسلات، حدس عدد، شیر یا خط، تاس،
+   امتیاز و سطح، برترین کاربران
    ============================================================ */
 
 const fs = require('fs');
@@ -103,10 +103,6 @@ const mainMenu = Markup.inlineKeyboard([
     Markup.button.callback('📖 فال حافظ', 'fal'),
   ],
   [
-    Markup.button.callback('🔮 توپ جادویی', 'magic8'),
-    Markup.button.callback('❤️ محاسبه عشق', 'love'),
-  ],
-  [
     Markup.button.callback('⭐ امتیاز من', 'me'),
     Markup.button.callback('🏆 برترین‌ها', 'top'),
   ],
@@ -153,29 +149,6 @@ const FALS = [
   '«دل ما به دور رویت ز فراق خون چکید / چو شکفته لاله از خاک برون چکید»\n\n🍀 فال تو: کسی که ازش دوری داری، دلش برات تنگ شده. یه پیام یا تماس ساده، یه آشتی بزرگ رو می‌سازه. غرور رو بذار کنار، محبت برنده‌ست. 🤝',
 ];
 
-/* ─────────────────────────── توپ جادویی ─────────────────────────── */
-
-const MAGIC8 = [
-  'آره، حتماً! شانست روشنه ✨',
-  'نشونه‌ها می‌گن بله! 👍',
-  'بدون شک، آره! 💪',
-  'فعلاً نه، یه کم صبر کن ⏳',
-  'نمی‌تونم الان بگم، دوباره ازم بپرس 🤔',
-  'نه! این کارو نکن ❌',
-  'دلم روش گواهی می‌ده که آره 💚',
-  'خیر، مسیرت رو عوض کن 🔄',
-  'آره آره! شک نکن 🎉',
-  'پاسخش در دله خودته، به ندای درونت گوش بده 🧭',
-  'اگه تلاش کنی، حتماً! 🏆',
-];
-
-const LOVE_COMMENTS = [
-  { max: 40, text: 'فعلاً فقط دوستی ساده! ولی نگران نباش، قلب‌ها وقتش رو می‌خواد 🌱' },
-  { max: 65, text: 'آتیش زیر خاکستر داره روشن می‌شه! کم‌کم گرم می‌شین 🔥' },
-  { max: 85, text: 'عشق قشنگی دارید! قدر همدیگه رو بدونید 💛' },
-  { max: 101, text: 'وای! شما دوتا برای هم ساخته شدید! ❤️‍🔥💕' },
-];
-
 /* ─────────────────────────── وضعیت بازی‌ها ─────────────────────────── */
 
 const sessions = {}; // chatId -> { kind: 'guess', number, tries, range, wins }
@@ -198,8 +171,7 @@ bot.start((ctx) => {
     `اینجا پر از بازی و خنده‌ست:\n` +
     `😂 جوک بخون   📖 فال حافظ بگیر\n` +
     `🎰 اسلات بزن   🔢 حدس عدد بازی کن\n` +
-    `🪙 شیر یا خط   🎲 تاس شانس\n` +
-    `🔮 توپ جادویی   ❤️ محاسبه عشق\n\n` +
+    `🪙 شیر یا خط   🎲 تاس شانس\n\n` +
     `⭐ هر بازی که بکنی امتیاز می‌گیری و سطحت بالا می‌ره!\n\n` +
     `از دستور /menu منو رو باز کن 👇`,
     mainMenu
@@ -217,8 +189,6 @@ bot.help((ctx) => {
     `/guess — بازی حدس عدد 🔢\n` +
     `/coin — شیر یا خط 🪙\n` +
     `/dice — پرتاب تاس 🎲\n` +
-    `/8 سوال تو — توپ جادویی 🔮\n` +
-    `/love اسم1 اسم2 — محاسبه عشق ❤️\n` +
     `/me — امتیاز و سطح من ⭐\n` +
     `/top — برترین کاربران 🏆`,
     mainMenu
@@ -416,47 +386,6 @@ function doDice(ctx) {
   });
 }
 
-/* ─── توپ جادویی ─── */
-
-bot.command('8', (ctx) => {
-  const q = ctx.message.text.replace(/^\/8\S*\s*/, '').trim();
-  const u = getUser(ctx.from.id);
-  addXp(u, 1);
-  if (!q) {
-    return ctx.reply('🔮 سوالت رو بعد از /8 بنویس!\nمثلاً:\n/8 آیا امروز روز خوبیه؟');
-  }
-  return ctx.reply(`🔮 سوال تو: ${q}\n\nپاسخ توپ جادویی: ${rand(MAGIC8)}`, mainMenu);
-});
-
-/* ─── محاسبه عشق ─── */
-
-bot.command('love', (ctx) => {
-  const parts = ctx.message.text.split(/\s+/).slice(1).filter(Boolean);
-  if (parts.length < 2) {
-    return ctx.reply(
-      '❤️ برای محاسبه عشق، دو تا اسم رو بفرست!\nمثلاً:\n/love علی مریم\n\nیا روی دکمه بزن و دو تا اسم رو با فاصله بنویس 👇',
-      Markup.inlineKeyboard([
-        [Markup.button.switchToCurrentChat('❤️ محاسبه عشق', '/love ')],
-      ])
-    );
-  }
-  const u = getUser(ctx.from.id);
-  addXp(u, 1);
-  const [a, b] = parts;
-  const seed = (a.length * 31 + b.length * 17 + a.charCodeAt(0) + b.charCodeAt(0)) % 51;
-  const score = 50 + seed; // 50..100
-  const comment = LOVE_COMMENTS.find((c) => score < c.max).text;
-  const bar = '💖'.repeat(Math.round(score / 10)) + '🤍'.repeat(10 - Math.round(score / 10));
-  return ctx.reply(
-    `❤️ محاسبه عشق:\n\n` +
-    `${a} 💕 ${b}\n\n` +
-    `${bar}\n` +
-    `🔥 درصد عشق: ${score}٪\n\n` +
-    `${comment}`,
-    mainMenu
-  );
-});
-
 /* ─────────────────────────── دکمه‌های شیشه‌ای ─────────────────────────── */
 
 bot.action('close', (ctx) => {
@@ -483,23 +412,6 @@ bot.action(/^guess_(\d+)$/, (ctx) => {
   return guessHandle(ctx, n);
 });
 
-bot.action('magic8', (ctx) => {
-  ctx.answerCbQuery().catch(() => {});
-  return ctx.reply(
-    '🔮 سوالت رو با دستور /8 بپرس!\nمثلاً:\n/8 آیا امروز برنده می‌شم؟'
-  );
-});
-
-bot.action('love', (ctx) => {
-  ctx.answerCbQuery().catch(() => {});
-  return ctx.reply(
-    '❤️ دو تا اسم رو با این دستور بفرست:\n/love اسم اول اسم دوم\n\nمثلاً:\n/love علی مریم',
-    Markup.inlineKeyboard([
-      [Markup.button.switchToCurrentChat('❤️ محاسبه عشق', '/love ')],
-    ])
-  );
-});
-
 /* متن‌های معمولی که عدد نیستند و داخل بازی نیستند → راهنما */
 bot.on('text', (ctx, next) => {
   const s = sessions[ctx.chat.id];
@@ -519,7 +431,7 @@ async function setupProfile() {
     () => tg.callApi('setMyName', { name: 'سرگرمی بات' }).catch(() => {}),
     () =>
       tg.setMyShortDescription(
-        '🎪 ربات سرگرمی فارسی: جوک، فال حافظ، اسلات، حدس عدد، تاس، توپ جادویی و کلی بازی! /menu رو بزن.'
+        '🎪 ربات سرگرمی فارسی: جوک، فال حافظ، اسلات، حدس عدد، تاس و کلی بازی! /menu رو بزن.'
       ).catch(() => {}),
     () =>
       tg.setMyCommands([
@@ -530,8 +442,6 @@ async function setupProfile() {
         { command: 'guess', description: '🔢 بازی حدس عدد' },
         { command: 'coin', description: '🪙 شیر یا خط' },
         { command: 'dice', description: '🎲 پرتاب تاس' },
-        { command: '8', description: '🔮 توپ جادویی (سوال بپرس)' },
-        { command: 'love', description: '❤️ محاسبه عشق (دو اسم)' },
         { command: 'me', description: '⭐ امتیاز و سطح من' },
         { command: 'top', description: '🏆 برترین کاربران' },
         { command: 'help', description: '❓ راهنما' },

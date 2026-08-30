@@ -1,18 +1,19 @@
-# راه جایگزین (بهتر برای ۲۴ ساعته کامل): Render رایگان
-# ۱) render.com → New → Web Service → این ریپو
-# ۲) BOT_TOKEN را بده
-# ۳) یک پینگ رایگان (UptimeRobot) روی /health بگذار تا ربات نخوابد
 services:
   - type: web
-    name: dogs-vpn-bot
+    name: gold-dollar-bot
     runtime: node
     plan: free
     buildCommand: npm install
-    startCommand: node index.js
-    healthCheckPath: /health
+    startCommand: npm start
     autoDeploy: true
     envVars:
-      - key: BOT_TOKEN
+      - key: GOLD_BOT_TOKEN
         sync: false
-      - key: BOT_NAME
-        value: 🐶 DogsVPN
+      - key: ADMIN_ID
+        sync: false
+      - key: CHANNEL_USERNAME
+        sync: false
+      - key: PORT
+        value: "10000"
+      - key: NODE_VERSION
+        value: "20"

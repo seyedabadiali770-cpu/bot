@@ -1,10 +1,10 @@
 {
-  "name": "config-bot",
-  "version": "2.0.0",
-  "description": "🐶 DogsVPN — ربات تلگرامی کانفیگ‌ساز رایگان (V2Ray/Trojan/Shadowsocks/WireGuard + لینک اشتراک)",
-  "main": "index.js",
+  "name": "gold-dollar-bot",
+  "version": "1.0.0",
+  "description": "💰 ربات تلگرام پیش‌بینی طلا و دلار — قیمت لحظه‌ای، هشدار، کانال خودکار",
+  "main": "gold-bot/index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node gold-bot/index.js"
   },
   "engines": {
     "node": ">=18"

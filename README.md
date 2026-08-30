@@ -57,7 +57,7 @@ GOLD_BOT_TOKEN=123456:ABC... ADMIN_ID=123456 CHANNEL_USERNAME=@my_channel npm st
 | `CHANNEL_USERNAME` | یوزرنیم کانال | `@gold_dollar_channel` |
 | `CHANNEL_ID` | آیدی عددی کانال (اختیاری) | — |
 | `REQUIRED_CHANNEL` | کانال اجباری عضویت | همان `CHANNEL_USERNAME` |
-| `GOLD_BOT_NAME` | نام نمایشی ربات | `💰 طلا و دلار` |
+| `GOLD_BOT_NAME` | نام نمایشی ربات (سئو شده) | `قیمت دلار طلا سکه | هشدار و پیش‌بینی` |
 | `PRICE_REFRESH_MS` | بازه به‌روزرسانی قیمت | `60000` (۱ دقیقه) |
 | `CHANNEL_POST_MS` | بازه پست خودکار کانال | `900000` (۱۵ دقیقه) |
 | `ALERT_CHECK_MS` | بازه بررسی هشدارها | `30000` (۳۰ ثانیه) |
@@ -84,33 +84,60 @@ GOLD_BOT_TOKEN=123456:ABC... ADMIN_ID=123456 CHANNEL_USERNAME=@my_channel npm st
 4. **CoinGecko** — قیمت بیت‌کوین
 5. **حالت آفلاین نمایشی** — اگر هیچ منبعی در دسترس نبود (مثل روی هاست خارج از ایران)، قیمت‌های واقع‌گرایانه با نوسان نمایش داده می‌شود
 
-## 🚀 دیپلوی یک‌کلیکی (دائمی و رایگان)
+## 🚀 دیپلوی یک‌کلیکی (دائمی و رایگان) — ۳ کلیک ساده!
 
-برای اینکه ربات **۲۴ ساعته و دائمی** روی یک سرور رایگان روشن بمونه، از یکی از دکمه‌های زیر استفاده کن (فقط یک‌بار کلیک و با حساب گیتهاب/گیتهابت وارد شو):
+> ✅ **توکن ربات از قبل داخل کد قرار گرفت. نیازی به تنظیم دستی BotFather هم نیست** — ربات خودش در اولین اجرا اسم، توضیحات، منوی دستورات و همه تنظیمات سئو رو از طریق API تلگرام ست می‌کنه.
 
+### 🎯 روش پیشنهادی: Render (رایگان و دائمی)
 <p align="center">
-  <a href="https://render.com/deploy?repo=https://github.com/seyedabadiali770-cpu/bot">
-    <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render" height="40">
-  </a>
-  &nbsp;&nbsp;
-  <a href="https://app.koyeb.com/deploy?type=git&repository=seyedabadiali770-cpu/bot&branch=arena/01a04fef-bot&name=gold-dollar-bot&run_command=npm%20start&env[GOLD_BOT_TOKEN]=8768391421:AAFEd7JYrJ6fkLHEuziDofKbOsWBwyyI77k&env[ADMIN_ID]=318405928&env[PORT]=8080">
-    <img src="https://www.koyeb.com/static/images/deploy/button.svg" alt="Deploy to Koyeb" height="40">
-  </a>
-  &nbsp;&nbsp;
-  <a href="https://railway.app/new/template?template=https://github.com/seyedabadiali770-cpu/bot&envs=GOLD_BOT_TOKEN,ADMIN_ID&GOLD_BOT_TOKEN=8768391421:AAFEd7JYrJ6fkLHEuziDofKbOsWBwyyI77k&ADMIN_ID=318405928">
-    <img src="https://railway.app/button.svg" alt="Deploy on Railway" height="40">
+  <a href="https://render.com/deploy?repo=https://github.com/seyedabadiali770-cpu/bot&branch=arena/01a04fef-bot">
+    <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render" height="52">
   </a>
 </p>
 
-> **⚠️ نکته مهم:** سرویس‌های رایگان بالا سرورهای خارجی هستن. قیمت‌های **جهانی** (اونس طلا، بیت‌کوین، تتر) روی اونها کاملاً واقعی می‌شه، ولی قیمت‌های **بازار داخلی ایران** (دلار تومان، طلای ۱۸، سکه) به‌خاطر محدودیت IP، روی حالت نمایشی/نوسان‌دار می‌مونن. برای قیمت‌های ۱۰۰٪ واقعیِ تومانی، از بخش «روی سرور ایرانی» پایین استفاده کن.
+**فقط این مراحل رو انجام بده:**
+1. ⬆️ روی دکمه آبی **"Deploy to Render"** بالا کلیک کن
+2. 🐙 با اکانت **گیتهابت** وارد شو (ساخت اکانت رایگان است، کارت بانکی لازم نیست)
+3. ✍️ در صفحه باز شده:
+   - **Name:** `gold-dollar-bot` (یا هر اسمی)
+   - **Region:** `Frankfurt (EU)`
+   - **`ADMIN_ID`:** آیدی عددی تلگرامت (از [@userinfobot](https://t.me/userinfobot) بگیر)
+   - **`CHANNEL_USERNAME`:** آدرس کانالت مثل `@tala_dollar_channel` (اگه کانال نداری می‌تونی خالی بذاری)
+   - بقیه فیلدها (توکن، نام ربات، پورت) **از قبل پر شده**
+4. 🟢 روی **Apply** یا **Create Web Service** بزن
+5. ⏱ حدود ۳-۴ دقیقه صبر کن تا ربات کامل دیپلوی بشه (چراغش سبز میشه)
+6. 🎉 **تمام!** ربات در تلگرام زنده شده — آدرس ربات توکن‌ات رو تو تلگرام باز کن، اسم، منو و دستورات خودکار تنظیم شدن.
 
-### مقادیر لازم در هنگام دیپلوی
-| متغیر | مقدار پیشنهادی |
-|-------|--------------|
-| `GOLD_BOT_TOKEN` | `8768391421:AAFEd7JYrJ6fkLHEuziDofKbOsWBwyyI77k` |
-| `ADMIN_ID` | آیدی عددی ادمین (از @userinfobot) |
-| `CHANNEL_USERNAME` | یوزرنیم کانال شما (مثل `@mygoldchannel`) |
-| `PORT` | به‌صورت خودکار تنظیم می‌شود |
+### 🔋 ربات ۲۴ ساعته روشن بمونه
+سرویس رایگان Render بعد از **۱۵ دقیقه عدم فعالیت** به خواب میره. برای اینکه همیشه بیدار بمونه:
+- یه حساب رایگان روی [cron-job.org](https://cron-job.org) بساز
+- یک Cron Job جدید بساز که هر **۱۰ دقیقه** یک‌بار آدرس رباتت رو ping کنه
+- آدرس رباتت از داشبورد رندر گرفته میشه (مثل `https://gold-dollar-bot.onrender.com/health`)
+
+### 🎁 گزینه‌های جایگزین اگه Render برات کار نکرد
+<p align="center">
+  <a href="https://railway.app/new/template?template=https://github.com/seyedabadiali770-cpu/bot&branch=arena/01a04fef-bot&envs=GOLD_BOT_TOKEN,ADMIN_ID,CHANNEL_USERNAME&GOLD_BOT_TOKEN=8768391421:AAFEd7JYrJ6fkLHEuziDofKbOsWBwyyI77k&ADMIN_ID=&CHANNEL_USERNAME=">
+    <img src="https://railway.app/button.svg" alt="Deploy on Railway" height="44">
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://app.koyeb.com/deploy?type=git&repository=seyedabadiali770-cpu/bot&branch=arena/01a04fef-bot&name=gold-dollar-bot&builder=buildpack&run_command=npm%20start&env[GOLD_BOT_TOKEN]=8768391421:AAFEd7JYrJ6fkLHEuziDofKbOsWBwyyI77k&env[PORT]=8080">
+    <img src="https://www.koyeb.com/static/images/deploy/button.svg" alt="Deploy to Koyeb" height="44">
+  </a>
+</p>
+
+### ⚠️ نکته مهم درباره قیمت‌های بازار ایران
+سرویس‌های رایگان بالای این صفحه روی سرورهای **خارجی** اجرا میشن:
+- ✅ قیمت‌های **جهانی** (اونس طلا، بیت‌کوین، تتر جهانی) **۱۰۰٪ واقعی**
+- ⚠️ قیمت‌های **بازار داخلی ایران** (دلار تومانی، طلای ۱۸، سکه) به‌خاطر بلاک بودن APIها از خارج، روی **حالت نمایشی واقع‌گرایانه** با نوسان روزانه می‌مونن
+- 💯 برای قیمت **کاملاً دقیق تومانی**، کد رو روی یک هاست/سرور **ایرانی** (بخش بعدی) اجرا کن — اون موقع خودبه‌خود قیمت‌های واقعی از brsapi/bonbast/nobitex خوانده میشن.
+
+### متغیرهای تنظیم شده در لینک دیپلوی
+| متغیر | مقدار |
+|-------|------|
+| `GOLD_BOT_TOKEN` | `8768391421:AAFEd7JYrJ6fkLHEuziDofKbOsWBwyyI77k` ✅ از قبل پر شده |
+| `GOLD_BOT_NAME` | `قیمت دلار طلا سکه | هشدار و پیش‌بینی` (اسم سئو شده) ✅ |
+| `ADMIN_ID` | ❗ باید آیدی عددی خودت رو بذاری |
+| `CHANNEL_USERNAME` | ❕ آدرس کانال (اختیاری) |
 
 ---
 

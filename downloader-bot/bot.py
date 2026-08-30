@@ -565,7 +565,22 @@ def main() -> None:
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 
     logger.info("🤖 ربات در حال اجراست...")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+
+    if config.MAX_RUNTIME_SECONDS > 0:
+        # اجرای محدود (برای GitHub Actions): بعد از N ثانیه تمیز خاموش می‌شود
+        async def run_limited() -> None:
+            await app.initialize()
+            await app.start()
+            await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+            await asyncio.sleep(config.MAX_RUNTIME_SECONDS)
+            await app.updater.stop()
+            await app.stop()
+            await app.shutdown()
+            logger.info("⏹️ پایان اجرای محدود (MAX_RUNTIME_SECONDS).")
+
+        asyncio.run(run_limited())
+    else:
+        app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":

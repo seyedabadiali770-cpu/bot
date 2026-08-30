@@ -29,6 +29,11 @@ ALLOWED_IDS = {
 MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "49") or 49)
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
+# مدت اجرای ربات (ثانیه). 0 یعنی همیشه روشن بماند.
+# در GitHub Actions مقدار مثبت می‌گذاریم تا ربات هر بازه خاموش شود و
+# اجرای بعدی (cron) دوباره روشنش کند.
+MAX_RUNTIME_SECONDS = int(os.getenv("MAX_RUNTIME_SECONDS", "0") or 0)
+
 # --- روبیکا ---
 RUBIKA_AUTH = os.getenv("RUBIKA_AUTH", "").strip()
 RUBIKA_PHONE = os.getenv("RUBIKA_PHONE", "").strip()

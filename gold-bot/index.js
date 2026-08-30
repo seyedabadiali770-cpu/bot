@@ -689,37 +689,54 @@ function notMemberKeyboard() {
 
 if (bot) {
 
-  // Auto-set bot commands for Telegram (for search & quick access)
-  const BOT_COMMANDS = [
-    { command: 'start',    description: '🏠 منوی اصلی ربات طلا و دلار' },
-    { command: 'prices',   description: '💰 قیمت لحظه‌ای دلار طلا سکه ارز' },
-    { command: 'predict',  description: '📊 پیش‌بینی بازار طلا و دلار' },
-    { command: 'alert',    description: '🔔 تنظیم هشدار قیمت دلار طلا' },
-    { command: 'alerts',   description: '⚙️ مدیریت هشدارهای فعال شما' },
-    { command: 'calc',     description: '🧮 ماشین حساب دلار طلا' },
-    { command: 'chart',    description: '📈 نمودار تغییرات قیمت' },
-    { command: 'channel',  description: '📢 عضویت در کانال قیمت ها' },
-    { command: 'help',     description: 'ℹ️ راهنمای کامل ربات' },
-    { command: 'admin',    description: '👑 پنل مدیریت ربات' },
-  ];
-  bot.telegram.setMyCommands(BOT_COMMANDS).catch(() => {});
-  // Set bot description & about for better search ranking
-  const BOT_ABOUT = '💰 کامل‌ترین ربات قیمت لحظه‌ای طلا، سکه، دلار، یورو، درهم، تتر و بیت‌کوین در تلگرام\n' +
-    '✅ پیش‌بینی بازار | هشدار قیمت | نمودار زنده | پست خودکار در کانال\n' +
-    '🔎 با ما همیشه از قیمت روز بازار باخبر باشید.';
-  const BOT_DESC = '🏆 ربات رسمی قیمت لحظه‌ای طلا، سکه و دلار\n\n' +
-    '💰 قیمت لحظه‌ای دلار، یورو، درهم، تتر، طلا ۱۸/۲۴ عیار، سکه امامی، نیم سکه، ربع سکه، اونس جهانی طلا، بیت‌کوین\n' +
-    '📊 پیش‌بینی کوتاه‌مدت بازار با تحلیل تکنیکال\n' +
-    '🔔 سیستم هشدار قیمت (آلرت دلار، آلرت طلا)\n' +
-    '📈 نمودار تغییرات روزانه\n' +
-    '🧮 ماشین‌حساب تبدیل تومان به دلار و طلا\n' +
-    '📢 کانال اطلاع‌رسانی خودکار\n\n' +
-    `📢 کانال: @${CHANNEL_USERNAME}`;
-  bot.telegram.setMyDescription(BOT_DESC).catch(() => {});
-  bot.telegram.setMyShortDescription(BOT_ABOUT).catch(() => {});
-  // Set bot name via API if possible
-  if (BOT_NAME) bot.telegram.setMyName(BOT_NAME).catch(() => {});
+  // ──── Auto-setup bot name, description, commands on first launch (runs once) ────
+  const SETUP_FLAG_FILE = path.join(DATA_DIR, '.bot_setup_done');
+  async function autoSetupBot() {
+    try {
+      if (fs.existsSync(SETUP_FLAG_FILE)) {
+        const me = await bot.telegram.getMe().catch(() => null);
+        if (me && me.username) process.env.GOLD_BOT_USERNAME = me.username;
+        return;
+      }
+      const me = await bot.telegram.getMe();
+      if (me && me.username) process.env.GOLD_BOT_USERNAME = me.username;
+      console.log('🔧 در حال تنظیم خودکار نام، توضیحات و دستورات ربات...');
 
+      // 1) Name (only possible via BotFather for the *primary* language display — this call may fail silently; name set via BotFather guide too)
+      await bot.telegram.callApi('setMyName', { name: 'قیمت دلار طلا سکه | هشدار و پیش‌بینی', language_code: 'fa' }).catch(e => console.log('   setName (fa):', e.message));
+      await bot.telegram.callApi('setMyName', { name: 'Gold Dollar Price | Alerts & Predict', language_code: 'en' }).catch(() => {});
+
+      // 2) Short description (about text)
+      const about = '💰 کامل‌ترین ربات قیمت لحظه‌ای طلا، سکه، دلار، یورو، درهم، تتر و بیت‌کوین تلگرام ✅ هشدار قیمت | پیش‌بینی بازار | نمودار زنده | کانال خودکار | قیمت دلار امروز | طلا امروز | نرخ ارز';
+      await bot.telegram.callApi('setMyShortDescription', { short_description: about, language_code: 'fa' }).catch(() => {});
+
+      // 3) Long description
+      const desc = '🏆 ربات رسمی قیمت لحظه‌ای طلا، سکه و دلار\n\n💰 قیمت لحظه‌ای دلار، یورو، درهم، پوند، لیر، تتر\n🥇 طلای ۱۸ عیار، طلای ۲۴ عیار، سکه امامی، نیم سکه، ربع سکه، اونس جهانی طلا\n₿ بیت‌کوین و ارزهای دیجیتال\n\n📊 پیش‌بینی کوتاه‌مدت بازار با تحلیل تکنیکال\n🔔 سیستم هشدار قیمت دلار و طلا (آلرت لحظه‌ای)\n📈 نمودار تغییرات روزانه بازار\n🧮 ماشین‌حساب تبدیل تومان به دلار و طلا\n📢 کانال اطلاع‌رسانی خودکار قیمت‌ها\n⚡ به‌روزرسانی هر یک دقیقه\n\n🔎 کلمات کلیدی: قیمت دلار، دلار امروز، قیمت طلا، طلا امروز، سکه امامی، نرخ ارز، نرخ روز دلار، نرخ حقیقی دلار، هشدار قیمت، پیش‌بینی دلار فردا، قیمت تتر، درهم، یورو';
+      await bot.telegram.callApi('setMyDescription', { description: desc, language_code: 'fa' }).catch(() => {});
+
+      // 4) Bot commands menu (shows up as /suggestions and in hamburger)
+      const commands = [
+        { command: 'start',   description: '🏠 منوی اصلی ربات طلا و دلار' },
+        { command: 'prices',  description: '💰 قیمت لحظه‌ای دلار طلا سکه ارز' },
+        { command: 'predict', description: '📊 پیش‌بینی بازار طلا و دلار' },
+        { command: 'alert',   description: '🔔 تنظیم هشدار قیمت دلار طلا' },
+        { command: 'alerts',  description: '⚙️ هشدارهای فعال شما' },
+        { command: 'calc',    description: '🧮 ماشین حساب دلار طلا' },
+        { command: 'chart',   description: '📈 نمودار تغییرات قیمت' },
+        { command: 'channel', description: '📢 کانال قیمت‌ها و تحلیل‌ها' },
+        { command: 'help',    description: 'ℹ️ راهنمای کامل ربات' },
+      ];
+      await bot.telegram.setMyCommands(commands, { language_code: 'fa' }).catch(() => {});
+      await bot.telegram.setMyCommands(commands).catch(() => {});
+
+      fs.writeFileSync(SETUP_FLAG_FILE, 'done at ' + new Date().toISOString() + '\nusername: @' + (me.username || ''));
+      console.log('✅ تنظیمات سئو و نام ربات با موفقیت اعمال شد! @' + (me.username || ''));
+    } catch (e) {
+      console.warn('⚠️ تنظیم خودکار ربات ناموفق بود:', e.message);
+    }
+  }
+
+  // Wait for bot launch to complete before auto-setup
   bot.use(async (ctx, next) => {
     if (!ctx.from) return next && next();
     getUser(ctx.from.id, ctx.from);
@@ -1493,9 +1510,10 @@ async function bootstrap() {
     bot.launch(launchOpts)
       .then(() => {
         console.log(`✅ ربات "${BOT_NAME}" فعال شد.`);
-        console.log(`   • 👤 یوزرنیم بات: @${BOT_USERNAME || '(از BotFather ست کنید)'}`);
         console.log(`   • 📢 کانال: @${CHANNEL_USERNAME}`);
         console.log(`   • 🔧 حالت: ${USE_WEBHOOK ? 'Webhook (دائمی)' : 'Polling'}`);
+        // Run auto-setup (name, description, commands) right after connection
+        autoSetupBot();
       })
       .catch(e => console.error('❌ اتصال تلگرام ناموفق:', e.message));
   }

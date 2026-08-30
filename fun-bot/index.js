@@ -59,10 +59,10 @@ function getUser(id) {
 
 const RANKS = [
   { min: 0, name: '🐣 تازه‌وارد' },
-  { min: 30, name: '😊 مشتری پر و پا قرص' },
-  { min: 80, name: '😎 حرفه‌ای' },
-  { min: 150, name: '🔥 قهرمان سرگرمی' },
-  { min: 300, name: '👑 اسطوره' },
+  { min: 100000, name: '😊 مشتری پر و پا قرص' },
+  { min: 1000000, name: '😎 حرفه‌ای' },
+  { min: 10000000, name: '🔥 قهرمان سرگرمی' },
+  { min: 100000000, name: '👑 اسطوره' },
 ];
 
 function rankOf(xp) {
@@ -86,6 +86,8 @@ function addXp(user, amount) {
 const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const nameOf = (ctx) => ctx.from.first_name || 'دوست عزیز';
+// اعداد بزرگ با ارقام فارسی و جداکننده هزارگان
+const fmt = (n) => Number(n || 0).toLocaleString('fa-IR');
 
 /* ─────────────────────────── منو ─────────────────────────── */
 
@@ -207,10 +209,10 @@ function sendProfile(ctx) {
   let text =
     `⭐ کارنامه ${nameOf(ctx)}:\n\n` +
     `🏅 رتبه: ${rankOf(u.xp || 0)}\n` +
-    `✨ امتیاز: ${u.xp || 0}\n` +
-    `🎮 بازی‌های انجام‌شده: ${u.plays || 0}\n` +
-    `🏆 بردهای اسلات: ${u.wins || 0}\n` +
-    `💎 جک‌پات: ${u.jackpot || 0} بار`;
+    `✨ امتیاز: ${fmt(u.xp)}\n` +
+    `🎮 بازی‌های انجام‌شده: ${fmt(u.plays || 0)}\n` +
+    `🏆 بردهای اسلات: ${fmt(u.wins || 0)}\n` +
+    `💎 جک‌پات: ${fmt(u.jackpot || 0)} بار`;
   if (next) text += `\n\n💪 تا رتبه «${next.name}» فقط ${next.need} امتیاز فاصله داری!`;
   return ctx.reply(text, mainMenu);
 }
@@ -230,7 +232,7 @@ function sendTop(ctx) {
   list.forEach((p, i) => {
     const mark = medals[i] || `${i + 1}️⃣.`;
     const self = String(p.id) === String(ctx.from.id) ? ' 👈 تو!' : '';
-    text += `${mark} <a href="tg://user?id=${p.id}">کاربر</a> — ${p.xp} امتیاز${self}\n`;
+    text += `${mark} <a href="tg://user?id=${p.id}">کاربر</a> — ${fmt(p.xp)} امتیاز${self}\n`;
   });
   if (!list.length) text += 'هنوز کسی بازی نکرده! اولین نفر باش 😄';
   return ctx.reply(text, { parse_mode: 'HTML', ...mainMenu });
@@ -242,7 +244,7 @@ bot.command('joke', (ctx) => sendJoke(ctx));
 
 function sendJoke(ctx) {
   const u = getUser(ctx.from.id);
-  addXp(u, 1);
+  addXp(u, 5000);
   return ctx.reply('😂 ' + rand(JOKES), mainMenu);
 }
 
@@ -252,7 +254,7 @@ bot.command('fal', (ctx) => sendFal(ctx));
 
 function sendFal(ctx) {
   const u = getUser(ctx.from.id);
-  addXp(u, 1);
+  addXp(u, 5000);
   return ctx.reply('📖 فال حافظ تو:\n\n' + rand(FALS), mainMenu);
 }
 
@@ -267,24 +269,25 @@ function doSlot(ctx) {
     const val = msg.dice.value; // 1..64
     let gain = 0, result = '';
     if (val === 64) {
-      gain = 50;
+      gain = 100000000;
       u.jackpot = (u.jackpot || 0) + 1;
       u.wins = (u.wins || 0) + 1;
-      result = '💎💎💎 جک‌پووووت! سه تا الماس! ۵۰ امتیاز!';
+      result = '💎💎💎 جک‌پووووت! سه تا الماس! 💯 میلیون امتیاز!';
     } else if (val === 1) {
-      gain = 20;
+      gain = 10000000;
       u.wins = (u.wins || 0) + 1;
-      result = '🎉 سه تا هفت! برنده شدی! ۲۰ امتیاز!';
+      result = '🎉 سه تا هفت! برنده شدی! ۱۰ میلیون امتیاز!';
     } else if (val >= 44) {
-      gain = 8;
+      gain = 1000000;
       u.wins = (u.wins || 0) + 1;
-      result = '😎 دو تا شبیه! برنده شدی! ۸ امتیاز!';
+      result = '😎 دو تا شبیه! برنده شدی! ۱ میلیون امتیاز!';
     } else {
-      result = '😅 این بار شانس باهات نبود! یه بار دیگه بزن، شانس چرخشیه!';
+      gain = 1000;
+      result = '😅 این بار شانس بزرگ همراهت نبود! ۱٬۰۰۰ امتیاز سرگرمی گرفتی، دوباره بزن!';
     }
     addXp(u, gain);
     setTimeout(() => {
-      ctx.reply(`${result}\n\n✨ مجموع امتیازت: ${u.xp}`, mainMenu).catch(() => {});
+      ctx.reply(`${result}\n\n✨ مجموع امتیازت: ${fmt(u.xp)}`, mainMenu).catch(() => {});
     }, 2000);
   });
 }
@@ -316,23 +319,23 @@ function guessHandle(ctx, guessed) {
 
   if (guessed === s.number) {
     delete sessions[ctx.chat.id];
-    const gain = s.tries === 1 ? 30 : s.tries === 2 ? 15 : 8;
+    const gain = s.tries === 1 ? 5000000 : s.tries === 2 ? 2000000 : 1000000;
     addXp(u, gain);
     ctx.answerCbQuery('درست حدس زدی! 🎉').catch(() => {});
     return ctx.editMessageText(
       `🎊 آفرین! عدد ${s.number} بود!\n` +
-      `تو ${s.tries} تلاش پیداش کردی و ${gain} امتیاز گرفتی!\n\n✨ مجموع امتیازت: ${u.xp}`,
+      `تو ${s.tries} تلاش پیداش کردی و ${fmt(gain)} امتیاز گرفتی!\n\n✨ مجموع امتیازت: ${fmt(u.xp)}`,
       mainMenu
     );
   }
 
   if (s.tries >= 3) {
     delete sessions[ctx.chat.id];
-    addXp(u, 2);
+    addXp(u, 1000);
     ctx.answerCbQuery('فرصت‌ها تموم شد').catch(() => {});
     return ctx.editMessageText(
       `😅 فرصت‌ها تموم شد! عدد درست ${s.number} بود.\n` +
-      `۲ امتیاز سرگرمی گرفتی! دوباره امتحان کن 👇`,
+      `۱٬۰۰۰ امتیاز سرگرمی گرفتی! دوباره امتحان کن 👇`,
       mainMenu
     );
   }
@@ -356,12 +359,12 @@ bot.command('coin', (ctx) => doCoin(ctx));
 function doCoin(ctx) {
   const u = getUser(ctx.from.id);
   u.plays = (u.plays || 0) + 1;
-  addXp(u, 1);
+  addXp(u, 1000);
   const isHeads = Math.random() < 0.5;
   return ctx.reply(
     isHeads
-      ? '🪙 سکه هوا رفت... و روی **شیر** نشست! 👑\n۱ امتیاز گرفتی!'
-      : '🪙 سکه هوا رفت... و روی **خط** نشست! 📏\n۱ امتیاز گرفتی!',
+      ? '🪙 سکه هوا رفت... و روی **شیر** نشست! 👑\n۱٬۰۰۰ امتیاز گرفتی!'
+      : '🪙 سکه هوا رفت... و روی **خط** نشست! 📏\n۱٬۰۰۰ امتیاز گرفتی!',
     { parse_mode: 'Markdown', ...mainMenu }
   );
 }
@@ -375,13 +378,13 @@ function doDice(ctx) {
   u.plays = (u.plays || 0) + 1;
   return ctx.replyWithDice({ emoji: '🎲' }).then((msg) => {
     const v = msg.dice.value;
-    let gain = 1, text = '';
-    if (v === 6) { gain = 10; text = '🔥 شیش! عالی! ۱۰ امتیاز!'; }
-    else if (v === 5) { gain = 5; text = '😄 پنج! خیلی خوب! ۵ امتیاز!'; }
-    else text = `${v} اومد! ${gain} امتیاز سرگرمی گرفتی!`;
+    let gain = 1000, text = '';
+    if (v === 6) { gain = 5000000; text = '🔥 شیش! عالی! ۵ میلیون امتیاز!'; }
+    else if (v === 5) { gain = 2000000; text = '😄 پنج! خیلی خوب! ۲ میلیون امتیاز!'; }
+    else text = `${v} اومد! ${fmt(gain)} امتیاز سرگرمی گرفتی!`;
     addXp(u, gain);
     setTimeout(() => {
-      ctx.reply(`🎲 ${text}\n\n✨ مجموع امتیازت: ${u.xp}`, mainMenu).catch(() => {});
+      ctx.reply(`🎲 ${text}\n\n✨ مجموع امتیازت: ${fmt(u.xp)}`, mainMenu).catch(() => {});
     }, 2200);
   });
 }

@@ -17,6 +17,8 @@ const BOT_TOKEN = (
 ).trim();
 
 const BOT_NAME = process.env.FUN_BOT_NAME || '🎪 سرگرمی بات';
+// آیدی عددی مالک ربات (پنل مدیریت) — با FUN_ADMIN_ID هم قابل تغییر است
+const ADMIN_ID = (process.env.FUN_ADMIN_ID || process.env.ADMIN_ID || '318405928').trim();
 // فایل امتیازها کنار بقیه دیتاها در پوشه‌ی data/ ریشه ذخیره می‌شود
 // تا همان workflow فعلی گیت‌هاب خودکار ذخیره‌اش کند
 const DATA_PATH = path.join(__dirname, '..', 'data', 'fun-users.json');
@@ -54,6 +56,19 @@ function getUser(id) {
   }
   return data[key];
 }
+
+// به‌روزرسانی اطلاعات بازیکن (نام/نام کاربری/آخرین بازدید)
+function trackUser(ctx) {
+  try {
+    if (!ctx.from || ctx.from.is_bot) return;
+    const u = getUser(ctx.from.id);
+    u.name = ctx.from.first_name || u.name || 'بازیکن';
+    u.username = ctx.from.username || u.username || '';
+    u.lastSeen = new Date().toISOString();
+  } catch (e) { /* بی‌خیال */ }
+}
+
+const isAdmin = (ctx) => String(ctx.from && ctx.from.id) === ADMIN_ID;
 
 /* ─────────────────────────── اطلاعات ─────────────────────────── */
 
@@ -163,6 +178,12 @@ bot.catch((err, ctx) => {
   console.error('bot error:', err && err.message);
 });
 
+// ثبت اطلاعات هر بازیکن که فعالیتی می‌کند
+bot.use((ctx, next) => {
+  trackUser(ctx);
+  return next();
+});
+
 bot.start((ctx) => {
   delete sessions[ctx.chat.id];
   const u = getUser(ctx.from.id);
@@ -175,7 +196,8 @@ bot.start((ctx) => {
     `🎰 اسلات بزن   🔢 حدس عدد بازی کن\n` +
     `🪙 شیر یا خط   🎲 تاس شانس\n\n` +
     `⭐ هر بازی که بکنی امتیاز می‌گیری و سطحت بالا می‌ره!\n\n` +
-    `از دستور /menu منو رو باز کن 👇`,
+    `از دستور /menu منو رو باز کن 👇` +
+    (isAdmin(ctx) ? `\n\n👑 دستور /admin — پنل مالک` : ''),
     mainMenu
   );
 });
@@ -208,13 +230,14 @@ function sendProfile(ctx) {
   const next = nextRank(u.xp || 0);
   let text =
     `⭐ کارنامه ${nameOf(ctx)}:\n\n` +
+    `🆔 آیدی عددی تو: <code>${ctx.from.id}</code>\n` +
     `🏅 رتبه: ${rankOf(u.xp || 0)}\n` +
     `✨ امتیاز: ${fmt(u.xp)}\n` +
     `🎮 بازی‌های انجام‌شده: ${fmt(u.plays || 0)}\n` +
     `🏆 بردهای اسلات: ${fmt(u.wins || 0)}\n` +
     `💎 جک‌پات: ${fmt(u.jackpot || 0)} بار`;
-  if (next) text += `\n\n💪 تا رتبه «${next.name}» فقط ${next.need} امتیاز فاصله داری!`;
-  return ctx.reply(text, mainMenu);
+  if (next) text += `\n\n💪 تا رتبه «${next.name}» فقط ${fmt(next.need)} امتیاز فاصله داری!`;
+  return ctx.reply(text, { parse_mode: 'HTML', ...mainMenu });
 }
 
 /* ─── برترین‌ها ─── */
@@ -389,6 +412,89 @@ function doDice(ctx) {
   });
 }
 
+/* ─────────────────────────── پنل مالک 👑 ─────────────────────────── */
+
+const PER_PAGE = 8;
+const adminMenu = Markup.inlineKeyboard([
+  [Markup.button.callback('👥 لیست بازیکنان', 'adm_players_0')],
+  [Markup.button.callback('📊 آمار کلی', 'adm_stats')],
+  [Markup.button.callback('🔄 بستن پنل', 'close')],
+]);
+
+function allPlayers() {
+  return Object.entries(data)
+    .map(([id, u]) => ({ id: String(id), ...u }))
+    .sort((a, b) => (b.xp || 0) - (a.xp || 0));
+}
+
+bot.command('admin', (ctx) => {
+  if (!isAdmin(ctx)) {
+    return ctx.reply('🚫 این بخش فقط برای مالک ربات است.\n\nاگه تو مالکی، آیدی عددی تلگرامت رو از @userinfobot بگیر و به پشتیبان بده.');
+  }
+  delete sessions[ctx.chat.id];
+  const total = allPlayers();
+  return ctx.reply(
+    `👑 پنل مالک ${BOT_NAME}\n\n` +
+    `👥 تعداد کل بازیکنان: ${fmt(total.length)}\n` +
+    `🔢 آیدی عددی تو: <code>${ctx.from.id}</code>\n\n` +
+    `یکی از بخش‌ها رو انتخاب کن:`,
+    { parse_mode: 'HTML', ...adminMenu }
+  );
+});
+
+function adminStatsText() {
+  const players = allPlayers();
+  const totalXp = players.reduce((s, p) => s + (p.xp || 0), 0);
+  const totalPlays = players.reduce((s, p) => s + (p.plays || 0), 0);
+  const totalJackpots = players.reduce((s, p) => s + (p.jackpot || 0), 0);
+  const activeToday = players.filter((p) => {
+    if (!p.lastSeen) return false;
+    return Date.now() - new Date(p.lastSeen).getTime() < 24 * 3600 * 1000;
+  }).length;
+  return (
+    `📊 آمار کلی ربات:\n\n` +
+    `👥 کل بازیکنان: ${fmt(players.length)}\n` +
+    `🟢 فعال در ۲۴ ساعت اخیر: ${fmt(activeToday)}\n` +
+    `🎮 مجموع بازی‌ها: ${fmt(totalPlays)}\n` +
+    `💎 مجموع جک‌پات‌ها: ${fmt(totalJackpots)}\n` +
+    `💰 مجموع امتیاز توزیع‌شده: ${fmt(totalXp)}`
+  );
+}
+
+function sendAdminStats(ctx) {
+  return ctx.reply(adminStatsText(), adminMenu);
+}
+
+function playersPage(page) {
+  const players = allPlayers();
+  const pages = Math.max(1, Math.ceil(players.length / PER_PAGE));
+  const p = Math.min(Math.max(0, page), pages - 1);
+  const slice = players.slice(p * PER_PAGE, (p + 1) * PER_PAGE);
+  let text = `👥 لیست بازیکنان (صفحه ${p + 1} از ${pages}):\n\n`;
+  slice.forEach((pl, i) => {
+    const rank = p * PER_PAGE + i + 1;
+    const user = pl.username ? '@' + pl.username : (pl.name || 'ناشناس');
+    text +=
+      `${rank}. ${user}\n` +
+      `   🆔 <code>${pl.id}</code>\n` +
+      `   💰 ${fmt(pl.xp)} امتیاز | 🏅 ${rankOf(pl.xp || 0)}\n\n`;
+  });
+  if (!slice.length) text += 'هنوز بازیکنی نیست! /menu رو برای دوستانت بفرست.';
+  const nav = [];
+  if (pages > 1) {
+    nav.push(
+      Markup.button.callback('⬅️ قبلی', 'adm_players_' + (p - 1)),
+      Markup.button.callback(`${p + 1}/${pages}`, 'adm_stats'),
+      Markup.button.callback('بعدی ➡️', 'adm_players_' + (p + 1))
+    );
+  }
+  const kb = Markup.inlineKeyboard(
+    pages > 1 ? [nav, [Markup.button.callback('📊 آمار', 'adm_stats')], [Markup.button.callback('🔄 بستن', 'close')]]
+            : [[Markup.button.callback('📊 آمار', 'adm_stats')], [Markup.button.callback('🔄 بستن', 'close')]]
+  );
+  return { text, kb };
+}
+
 /* ─────────────────────────── دکمه‌های شیشه‌ای ─────────────────────────── */
 
 bot.action('close', (ctx) => {
@@ -413,6 +519,24 @@ bot.action('guess_start', (ctx) => {
 bot.action(/^guess_(\d+)$/, (ctx) => {
   const n = Number(ctx.match[1]);
   return guessHandle(ctx, n);
+});
+
+bot.action(/^adm_players_(\d+)$/, (ctx) => {
+  if (!isAdmin(ctx)) {
+    return ctx.answerCbQuery('🚫 فقط مالک ربات').catch(() => {});
+  }
+  const page = Number(ctx.match[1]);
+  const { text, kb } = playersPage(page);
+  ctx.answerCbQuery().catch(() => {});
+  return ctx.reply(text, { parse_mode: 'HTML', ...kb });
+});
+
+bot.action('adm_stats', (ctx) => {
+  if (!isAdmin(ctx)) {
+    return ctx.answerCbQuery('🚫 فقط مالک ربات').catch(() => {});
+  }
+  ctx.answerCbQuery().catch(() => {});
+  return sendAdminStats(ctx);
 });
 
 /* متن‌های معمولی که عدد نیستند و داخل بازی نیستند → راهنما */

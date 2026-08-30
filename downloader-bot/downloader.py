@@ -1,9 +1,9 @@
-"""موتور دانلود — تشخیص پلتفرم و دانلود با yt-dlp."""
+"""موتور دانلود — تشخیص پلتفرم، انتخاب کیفیت، استخراج صدا و دانلود با yt-dlp."""
 import os
 import re
 import tempfile
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Callable, Optional
 
 import yt_dlp
 
@@ -33,6 +33,21 @@ PLATFORM_NAMES_FA = {
     "generic": "عمومی",
 }
 
+# نگاشت کیفیت → فرمت yt-dlp
+VIDEO_FORMATS = {
+    "best": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo+bestaudio/best",
+    "high": "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[height<=1080]/best",
+    "medium": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]/best",
+    "low": "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best[height<=480]/best",
+}
+
+QUALITY_LABELS_FA = {
+    "best": "کیفیت اصلی / HD",
+    "high": "تا ۱۰۸۰p",
+    "medium": "تا ۷۲۰p",
+    "low": "تا ۴۸۰p",
+}
+
 
 def detect_platform(url: str) -> str:
     """نام پلتفرم را از لینک تشخیص می‌دهد (پیش‌فرض: generic)."""
@@ -47,8 +62,20 @@ def extract_urls(text: str) -> list[str]:
     return re.findall(r"https?://[^\s]+", text)
 
 
+def format_duration(seconds: Optional[int]) -> str:
+    """ثانیه → «mm:ss» یا «hh:mm:ss»."""
+    if not seconds:
+        return "—"
+    seconds = int(seconds)
+    h, rem = divmod(seconds, 3600)
+    m, s = divmod(rem, 60)
+    if h:
+        return f"{h}:{m:02d}:{s:02d}"
+    return f"{m}:{s:02d}"
+
+
 # ---------------------------------------------------------------------------
-# ساختار نتیجه‌ی دانلود
+# ساختار نتیجه
 # ---------------------------------------------------------------------------
 @dataclass
 class DownloadResult:
@@ -59,14 +86,29 @@ class DownloadResult:
     filesize: int = 0
     is_audio: bool = False
     url: str = ""
+    duration: int = 0
     error: str = ""
     warnings: list = field(default_factory=list)
+
+
+@dataclass
+class InfoResult:
+    ok: bool
+    title: str = ""
+    duration: int = 0
+    uploader: str = ""
+    view_count: int = 0
+    like_count: int = 0
+    upload_date: str = ""
+    thumbnail: str = ""
+    description: str = ""
+    error: str = ""
 
 
 # ---------------------------------------------------------------------------
 # گزینه‌های yt-dlp
 # ---------------------------------------------------------------------------
-def _base_opts(outdir: str, prefer_audio: bool, quality: str) -> dict:
+def _base_opts(outdir: str, prefer_audio: bool, quality: str, progress_cb=None) -> dict:
     opts = {
         "outtmpl": os.path.join(outdir, "%(title).80s [%(id)s].%(ext)s"),
         "noplaylist": True,
@@ -84,6 +126,9 @@ def _base_opts(outdir: str, prefer_audio: bool, quality: str) -> dict:
         },
     }
 
+    if progress_cb:
+        opts["progress_hooks"] = [progress_cb]
+
     if prefer_audio:
         opts.update(
             {
@@ -98,56 +143,51 @@ def _base_opts(outdir: str, prefer_audio: bool, quality: str) -> dict:
             }
         )
     else:
-        # اولویت با mp4 برای سازگاری بیشتر با تلگرام
-        opts["format"] = (
-            "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/"
-            "bestvideo+bestaudio/best"
-        )
+        opts["format"] = VIDEO_FORMATS.get(quality, VIDEO_FORMATS["best"])
         opts["merge_output_format"] = "mp4"
-
-    if quality == "low":
-        opts["format"] = "worst[ext=mp4]/worst"
 
     return opts
 
 
+def _resolve_final_path(info: dict, ydl, prefer_audio: bool) -> Optional[str]:
+    """پیدا کردن فایل نهایی دانلودشده (پس از ادغام/تبدیل)."""
+    if "requested_downloads" in info and info["requested_downloads"]:
+        fp = info["requested_downloads"][0].get("filepath")
+        if fp and os.path.exists(fp):
+            return fp
+
+    base = os.path.splitext(ydl.prepare_filename(info))[0]
+    candidates = [base + ".mp4", base + ".mkv", base + ".mp3", base + ".webm", base + ".m4a"]
+    for cand in candidates:
+        if os.path.exists(cand):
+            return cand
+    return None
+
+
 # ---------------------------------------------------------------------------
-# تابع اصلی دانلود
+# دانلود تک‌لینک
 # ---------------------------------------------------------------------------
-def download(url: str, prefer_audio: bool = False, quality: str = "best") -> DownloadResult:
-    """دانلود از لینک داده‌شده. کیفیت: best | low"""
+def download(
+    url: str,
+    prefer_audio: bool = False,
+    quality: str = "best",
+    progress_cb: Optional[Callable] = None,
+) -> DownloadResult:
+    """دانلود از لینک. quality: best | high | medium | low"""
     result = DownloadResult(ok=False, url=url)
     tmpdir = tempfile.mkdtemp(prefix="dlbot_")
 
     try:
-        opts = _base_opts(tmpdir, prefer_audio, quality)
+        opts = _base_opts(tmpdir, prefer_audio, quality, progress_cb)
 
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-            if "entries" in info:  # پلی‌لیست → اولین آیتم
+            if "entries" in info:
                 info = info["entries"][0]
 
-            # پیدا کردن فایل دانلودشده
-            final_path = None
-            if "requested_downloads" in info and info["requested_downloads"]:
-                final_path = info["requested_downloads"][0].get("filepath")
+            final_path = _resolve_final_path(info, ydl, prefer_audio)
             if not final_path:
-                final_path = ydl.prepare_filename(info)
-                if prefer_audio and final_path.endswith((".webm", ".m4a", ".opus")):
-                    base = os.path.splitext(final_path)[0]
-                    if os.path.exists(base + ".mp3"):
-                        final_path = base + ".mp3"
-
-            if not final_path or not os.path.exists(final_path):
-                # در صورت ادغام فرمت‌ها، پسوند mp4 را امتحان کن
-                base = os.path.splitext(ydl.prepare_filename(info))[0]
-                for cand in (base + ".mp4", base + ".mkv", base + ".mp3", base + ".webm"):
-                    if os.path.exists(cand):
-                        final_path = cand
-                        break
-
-            if not final_path or not os.path.exists(final_path):
                 result.error = "فایل خروجی پیدا نشد."
                 return result
 
@@ -157,6 +197,7 @@ def download(url: str, prefer_audio: bool = False, quality: str = "best") -> Dow
             result.ext = os.path.splitext(final_path)[1].lstrip(".").lower()
             result.filesize = os.path.getsize(final_path)
             result.is_audio = prefer_audio
+            result.duration = info.get("duration") or 0
             result.warnings = info.get("_warning_lines", []) or []
             return result
 
@@ -165,6 +206,86 @@ def download(url: str, prefer_audio: bool = False, quality: str = "best") -> Dow
     except Exception as e:  # noqa: BLE001
         result.error = f"{type(e).__name__}: {e}"[:500]
     return result
+
+
+# ---------------------------------------------------------------------------
+# اطلاعات ویدیو (بدون دانلود)
+# ---------------------------------------------------------------------------
+def get_info(url: str) -> InfoResult:
+    """دریافت متادیتای ویدیو/پست بدون دانلود فایل."""
+    res = InfoResult(ok=False, url=url)
+    try:
+        opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": True,
+            "socket_timeout": 30,
+            "http_headers": {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+                )
+            },
+        }
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            if "entries" in info:
+                info = info["entries"][0]
+
+            res.ok = True
+            res.title = info.get("title") or "بدون عنوان"
+            res.duration = info.get("duration") or 0
+            res.uploader = info.get("uploader") or info.get("channel") or "—"
+            res.view_count = info.get("view_count") or 0
+            res.like_count = info.get("like_count") or 0
+            res.upload_date = info.get("upload_date") or ""
+            res.thumbnail = info.get("thumbnail") or ""
+            res.description = (info.get("description") or "")[:300]
+    except Exception as e:  # noqa: BLE001
+        res.error = f"{type(e).__name__}: {e}"[:500]
+    return res
+
+
+# ---------------------------------------------------------------------------
+# دانلود لیست پخش (یوتیوب)
+# ---------------------------------------------------------------------------
+def download_playlist(
+    url: str,
+    limit: int = 5,
+    prefer_audio: bool = False,
+    quality: str = "best",
+    progress_cb: Optional[Callable] = None,
+) -> list[DownloadResult]:
+    """دانلود چند آیتم اول یک لیست پخش."""
+    results: list[DownloadResult] = []
+    tmpdir = tempfile.mkdtemp(prefix="dlbot_pl_")
+
+    try:
+        opts = _base_opts(tmpdir, prefer_audio, quality, progress_cb)
+        opts["noplaylist"] = False
+        opts["playlistend"] = limit
+
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            entries = info.get("entries") or []
+            for entry in entries:
+                if not entry:
+                    continue
+                r = DownloadResult(ok=False, url=entry.get("webpage_url", url))
+                final_path = _resolve_final_path(entry, ydl, prefer_audio)
+                if final_path:
+                    r.ok = True
+                    r.filepath = final_path
+                    r.title = entry.get("title") or "بدون عنوان"
+                    r.ext = os.path.splitext(final_path)[1].lstrip(".").lower()
+                    r.filesize = os.path.getsize(final_path)
+                    r.is_audio = prefer_audio
+                    r.duration = entry.get("duration") or 0
+                results.append(r)
+    except Exception as e:  # noqa: BLE001
+        results.append(DownloadResult(ok=False, url=url, error=f"{type(e).__name__}: {e}"[:300]))
+    return results
 
 
 def cleanup(filepath: str) -> None:

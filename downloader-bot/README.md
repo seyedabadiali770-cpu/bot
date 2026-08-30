@@ -81,6 +81,75 @@ python bot.py
 
 ---
 
+## 🚀 اجرای دائمی (۲۴ ساعته) با GitHub Actions
+
+این روش رایگان است و ربات را تقریباً همیشه روشن نگه می‌دارد (همان روشی که
+ربات VPN همین مخزن استفاده می‌کند). فقط **دو قدم**:
+
+**قدم ۱ — افزودن توکن به عنوان Secret:**
+
+۱. به صفحه‌ی مخزن در GitHub برو → **Settings** → **Secrets and variables** → **Actions**
+۲. روی **New repository secret** بزن
+۳. نام: `DOWNLOADER_BOT_TOKEN` — مقدار: توکن ربات دانلودر
+۴. (اختیاری) Secret های `ADMIN_IDS` و `ALLOWED_IDS` را هم اضافه کن
+
+**قدم ۲ — افزودن فایل workflow:**
+
+در مخزن، **Add file → Create new file**، مسیر زیر را بزن و محتوای آن را بچسبان
+و روی main کامیت کن:
+
+`.github/workflows/downloader-bot.yml`
+
+```yaml
+name: Downloader Bot (keep alive)
+
+on:
+  schedule:
+    - cron: '47 */6 * * *'   # هر ۶ ساعت
+  workflow_dispatch:
+
+concurrency:
+  group: downloader-bot
+  cancel-in-progress: false
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ffmpeg and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          pip install -r downloader-bot/requirements.txt
+
+      - name: Run bot
+        working-directory: downloader-bot
+        run: timeout 21000 python bot.py
+        env:
+          BOT_TOKEN: ${{ secrets.DOWNLOADER_BOT_TOKEN }}
+          ADMIN_IDS: ${{ secrets.ADMIN_IDS }}
+          ALLOWED_IDS: ${{ secrets.ALLOWED_IDS }}
+```
+
+پس از کامیت، از تب **Actions** می‌توانی اجرا را ببینی و با دکمه‌ی
+**Run workflow** همان لحظه تست کنی.
+
+> ⚠️ نکته‌ها: ربات حدود ۵ ساعت و ۵۰ دقیقه روشن می‌ماند و هر ۶ ساعت یک بار
+> ری‌استارت می‌شود (چند دقیقه توقف کوتاه بین اجراها هست). اجرای زمان‌بندی‌شده
+> فقط روی شاخه‌ی `main` فعال است. برای اجرای واقعیِ بدون هیچ وقفه‌ای،
+> Railway یا Render گزینه‌ی بهتری است.
+
+---
+
 ## 🔐 امنیت و حریم خصوصی
 
 - **توکن را عمومی نکن.** اگر توکن جایی لو رفت، فوراً در **@BotFather → /revoke**

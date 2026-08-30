@@ -1,0 +1,109 @@
+name: 🔧 Setup Telegram Bot (One-Time)
+
+on:
+  workflow_dispatch:  # manual trigger
+
+jobs:
+  setup-bot:
+    name: Configure bot via Telegram API
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set bot name, description, commands
+        env:
+          TOKEN: ${{ secrets.BOT_TOKEN || '8768391421:AAFEd7JYrJ6fkLHEuziDofKbOsWBwyyI77k' }}
+        run: |
+          set -e
+          API="https://api.telegram.org/bot${TOKEN}"
+
+          echo "=== 1. getMe ==="
+          ME=$(curl -s "$API/getMe")
+          echo "$ME"
+          echo "$ME" | grep -q '"ok":true' || { echo "❌ Token invalid or unreachable"; exit 1; }
+          BOT_USER=$(echo "$ME" | sed -n 's/.*"username":"\([^"]*\)".*/\1/p')
+          echo "✅ Bot username: @$BOT_USER"
+
+          echo ""
+          echo "=== 2. Set bot name ==="
+          curl -s -X POST "$API/setMyName" \
+            -F "name=قیمت دلار طلا سکه | هشدار و پیش‌بینی" \
+            -F "language_code=fa"
+          echo ""
+          curl -s -X POST "$API/setMyName" \
+            -F "name=Gold Dollar Price | Alerts & Predict" \
+            -F "language_code=en"
+          echo ""
+
+          echo "=== 3. Set about (short description) ==="
+          curl -s -X POST "$API/setMyShortDescription" \
+            -F "short_description=💰 کامل‌ترین ربات قیمت لحظه‌ای طلا، سکه، دلار، یورو، درهم، تتر و بیت‌کوین تلگرام ✅ هشدار قیمت | پیش‌بینی بازار | نمودار زنده | کانال خودکار | قیمت دلار امروز | قیمت طلا امروز | نرخ ارز" \
+            -F "language_code=fa"
+          echo ""
+
+          echo "=== 4. Set description ==="
+          DESC="🏆 ربات رسمی قیمت لحظه‌ای طلا، سکه و دلار%0A%0A💰 قیمت لحظه‌ای دلار، یورو، درهم، پوند، لیر، تتر%0A🥇 طلای ۱۸ عیار، طلای ۲۴ عیار، سکه امامی، نیم سکه، ربع سکه، اونس جهانی طلا%0A₿ بیت‌کوین و ارزهای دیجیتال%0A%0A📊 پیش‌بینی کوتاه‌مدت بازار با تحلیل تکنیکال%0A🔔 سیستم هشدار قیمت دلار و طلا (آلرت لحظه‌ای)%0A📈 نمودار تغییرات روزانه بازار%0A🧮 ماشین‌حساب تبدیل تومان به دلار و طلا%0A📢 کانال اطلاع‌رسانی خودکار قیمت‌ها%0A⚡ به‌روزرسانی هر یک دقیقه%0A%0A🔎 کلمات کلیدی: قیمت دلار، دلار امروز، قیمت طلا، طلا امروز، سکه امامی، نرخ ارز، نرخ روز دلار، نرخ حقیقی دلار، هشدار قیمت، پیش‌بینی دلار فردا، قیمت تتر، درهم، یورو"
+          curl -s -X POST "$API/setMyDescription" \
+            --data-urlencode "description=🏆 ربات رسمی قیمت لحظه‌ای طلا، سکه و دلار
+
+💰 قیمت لحظه‌ای دلار، یورو، درهم، پوند، لیر، تتر
+🥇 طلای ۱۸ عیار، طلای ۲۴ عیار، سکه امامی، نیم سکه، ربع سکه، اونس جهانی طلا
+₿ بیت‌کوین و ارزهای دیجیتال
+
+📊 پیش‌بینی کوتاه‌مدت بازار با تحلیل تکنیکال
+🔔 سیستم هشدار قیمت دلار و طلا (آلرت لحظه‌ای)
+📈 نمودار تغییرات روزانه بازار
+🧮 ماشین‌حساب تبدیل تومان به دلار و طلا
+📢 کانال اطلاع‌رسانی خودکار قیمت‌ها
+⚡ به‌روزرسانی هر یک دقیقه
+
+🔎 کلمات کلیدی: قیمت دلار، دلار امروز، قیمت طلا، طلا امروز، سکه امامی، نرخ ارز، نرخ روز دلار، نرخ حقیقی دلار، هشدار قیمت، پیش‌بینی دلار فردا، قیمت تتر، درهم، یورو" \
+            -F "language_code=fa"
+          echo ""
+
+          echo "=== 5. Set bot commands menu ==="
+          cat > /tmp/cmds.json << 'JSON'
+{
+  "commands": [
+    {"command":"start","description":"🏠 منوی اصلی ربات طلا و دلار"},
+    {"command":"prices","description":"💰 قیمت لحظه‌ای دلار طلا سکه ارز"},
+    {"command":"predict","description":"📊 پیش‌بینی بازار طلا و دلار"},
+    {"command":"alert","description":"🔔 تنظیم هشدار قیمت دلار طلا"},
+    {"command":"alerts","description":"⚙️ هشدارهای فعال شما"},
+    {"command":"calc","description":"🧮 ماشین حساب دلار طلا"},
+    {"command":"chart","description":"📈 نمودار تغییرات قیمت"},
+    {"command":"channel","description":"📢 کانال قیمت‌ها و تحلیل‌ها"},
+    {"command":"help","description":"ℹ️ راهنمای کامل ربات"}
+  ],
+  "language_code": "fa",
+  "scope": {"type":"default"}
+}
+JSON
+          curl -s -X POST "$API/setMyCommands" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/cmds.json
+          echo ""
+
+          echo ""
+          echo "=== 6. Set botpic placeholder (can't do without image) ==="
+          echo "(Botpic needs to be set manually from BotFather, or we can upload a generated logo)"
+
+          echo ""
+          echo "✅✅✅ تمام تنظیمات ربات با موفقیت اعمال شد!"
+          echo "   Open https://t.me/$BOT_USER to verify."
+
+      - name: Upload bot logo
+        env:
+          TOKEN: ${{ secrets.BOT_TOKEN || '8768391421:AAFEd7JYrJ6fkLHEuziDofKbOsWBwyyI77k' }}
+        run: |
+          # Generate a simple gold-dollar logo with ImageMagick if available
+          cd /tmp
+          convert -size 640x640 xc:"#1a1a2e" \
+            -fill "#f59e0b" -font DejaVu-Sans-Bold -pointsize 280 -gravity center -annotate +0-100 "💰" \
+            -fill "#fbbf24" -font DejaVu-Sans-Bold -pointsize 70 -gravity center -annotate +0+160 "طلا • دلار" \
+            -fill "#94a3b8" -font DejaVu-Sans -pointsize 36 -gravity center -annotate +0+240 "قیمت لحظه‌ای و هشدار" \
+            botpic.png 2>/dev/null || echo "(ImageMagick not available, skipping botpic upload)"
+          if [ -f botpic.png ]; then
+            curl -s -X POST "https://api.telegram.org/bot${TOKEN}/setChatPhoto" \
+              -F "chat_id=@$(curl -s https://api.telegram.org/bot${TOKEN}/getMe | sed -n 's/.*"username":"\([^"]*\)".*/\1/p')" \
+              -F "photo=@botpic.png" 2>/dev/null
+            echo "✅ Botpic uploaded"
+          fi

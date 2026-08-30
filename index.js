@@ -26,20 +26,11 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-/* ─────────── راه‌اندازی ربات سرگرمی 🎪 (به‌عنوان زیرفرایند) ─────────── */
-/* ربات سرگرمی کنار ربات VPN روشن می‌شود تا یک workflow هر دو را اجرا کند */
+/* ─────────── راه‌اندازی ربات سرگرمی 🎪 (در همین فرایند) ─────────── */
+/* ربات سرگرمی داخل همین برنامه اجرا می‌شود تا با پایان زمان اجرا،
+   هر دو ربات با هم و تمیز متوقف شوند (بدون فرایند یتیم) */
 try {
-  const { spawn } = require('child_process');
-  const funBotFile = path.join(__dirname, 'fun-bot', 'index.js');
-  if (fs.existsSync(funBotFile)) {
-    const fun = spawn(process.execPath, [funBotFile], {
-      cwd: path.join(__dirname, 'fun-bot'),
-      stdio: 'inherit',
-      env: process.env,
-    });
-    fun.on('exit', (code) => console.log('[fun-bot] متوقف شد، کد:', code));
-    fun.on('error', (e) => console.error('[fun-bot] خطا در اجرا:', e && e.message));
-  }
+  require('./fun-bot');
 } catch (e) {
   console.error('[fun-bot] شروع نشد:', e && e.message);
 }

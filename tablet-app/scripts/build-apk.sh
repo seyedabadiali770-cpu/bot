@@ -12,6 +12,15 @@ APK_NAME="${APK_NAME:-StarLive.apk}"
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 if [ -z "$SDK" ]; then echo "❌ ANDROID_HOME تنظیم نشده"; exit 1; fi
 
+# اگر build-tools یا platform نصب نیست، نصبشان کن (روی GitHub Actions معمولاً از قبل هست)
+if [ -z "$(ls -1d "$SDK"/build-tools/* 2>/dev/null)" ] || [ -z "$(ls -1d "$SDK"/platforms/android-* 2>/dev/null)" ]; then
+  if command -v sdkmanager >/dev/null 2>&1; then
+    yes | sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" >/dev/null || true
+  elif [ -x "$SDK/cmdline-tools/latest/bin/sdkmanager" ]; then
+    yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" >/dev/null || true
+  fi
+fi
+
 # آخرین نسخه build-tools و یک platform مناسب را پیدا کن
 BT_DIR="$(ls -1d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1)"
 if [ -z "$BT_DIR" ]; then echo "❌ build-tools پیدا نشد"; exit 1; fi

@@ -1,13 +1,10 @@
 name: Build StarLive APK
 
 on:
-  push:
-    branches:
-      - 'arena/**'
-    paths:
-      - 'tablet-app/**'
-      - '.github/workflows/build-apk.yml'
   workflow_dispatch:
+  push:
+    branches: ['arena/**']
+    paths: ['tablet-app/**', '.github/workflows/build-apk.yml']
 
 permissions:
   contents: write
@@ -15,43 +12,17 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install build tools + platform
-        run: |
-          yes | sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" >/dev/null
-          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-
-      - name: Build APK
-        run: |
-          chmod +x tablet-app/scripts/build-apk.sh
-          ANDROID_HOME="${ANDROID_SDK_ROOT}" bash tablet-app/scripts/build-apk.sh
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - run: bash tablet-app/scripts/build-apk.sh
+      - uses: actions/upload-artifact@v4
         with:
           name: StarLive-APK
           path: tablet-app/build/StarLive.apk
-          if-no-files-found: error
-
-      - name: Publish release
-        env:
+      - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="starlive-$(date +%Y%m%d-%H%M%S)"
-          gh release create "$TAG" tablet-app/build/StarLive.apk \
-            --title "ستاره لایو — نسخه $TAG" \
-            --notes "برنامه ستاره لایو برای تبلت اندروید ۴.۴ به بالا (Lenovo Tab 2 A7-30HC). فایل StarLive.apk را دانلود و نصب کنید." \
-            || echo "release skipped"
+        run: gh release create "apk-${GITHUB_RUN_NUMBER}" tablet-app/build/StarLive.apk -t "StarLive APK" -n "برنامه ستاره لایو برای اندروید ۴.۴ به بالا" || true

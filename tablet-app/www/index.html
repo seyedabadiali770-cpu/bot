@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="format-detection" content="telephone=no">
+<title>ستاره لایو</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body class="theme-dark">
+
+<!-- ================= SPLASH ================= -->
+<div id="splash" class="splash">
+  <div class="splash-logo">★</div>
+  <div class="splash-title">ستاره لایو</div>
+  <div class="splash-sub">دنیای ستاره‌ها توی جیب تو</div>
+  <div class="splash-bar"><i id="splashBar"></i></div>
+</div>
+
+<!-- ================= LOCK ================= -->
+<div id="lockScreen" class="screen lock-screen hidden">
+  <div class="lock-clock" id="lockClock">۰۰:۰۰</div>
+  <div class="lock-date" id="lockDate"></div>
+  <div class="lock-hint">برای باز کردن، انگشتت رو نگه دار</div>
+  <div class="fp-pad" id="lockFp">
+    <div class="fp-ring"></div>
+    <div class="fp-icon">☝</div>
+    <div class="fp-scan"></div>
+  </div>
+  <div class="lock-skip" id="lockSkip">ورود بدون اثر انگشت</div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" class="app hidden">
+
+  <!-- ---------- HOME ---------- -->
+  <section class="screen" id="screen-home">
+    <div class="topbar">
+      <div class="topbar-t">
+        <div class="tb-title">سلام <span id="homeName">دوست من</span> 👋</div>
+        <div class="tb-sub" id="homeDate">—</div>
+      </div>
+      <div class="tb-clock" id="homeClock">۰۰:۰۰</div>
+    </div>
+
+    <div class="scroll" id="homeScroll">
+      <div class="hero" id="heroCard">
+        <div class="hero-ava" id="heroAva">CR</div>
+        <div class="hero-txt">
+          <div class="hero-name">کریستیانو رونالدو <span class="vbadge">✔</span></div>
+          <div class="hero-line" id="heroLine">آنلاین است • همین الان</div>
+        </div>
+        <div class="hero-btns">
+          <button class="mini-btn" id="heroChat">پیام</button>
+          <button class="mini-btn green" id="heroCall">تماس</button>
+        </div>
+      </div>
+
+      <div class="sec-title">امکانات</div>
+      <div class="grid" id="homeGrid"></div>
+
+      <div class="sec-title">وضعیت امروز</div>
+      <div class="stat-row" id="homeStats"></div>
+
+      <div class="sec-title">تماس‌های زمان‌بندی‌شده</div>
+      <div id="homeAlarms" class="list-box"></div>
+
+      <div class="pad60"></div>
+    </div>
+  </section>
+
+  <!-- ---------- CHAT LIST ---------- -->
+  <section class="screen hidden" id="screen-chats">
+    <div class="topbar">
+      <div class="topbar-t"><div class="tb-title">پیام‌ها</div><div class="tb-sub">دایرکت ستاره‌ها</div></div>
+      <div class="tb-clock" id="chatsUnread"></div>
+    </div>
+    <div class="scroll"><div id="chatList" class="list-box"></div><div class="pad60"></div></div>
+  </section>
+
+  <!-- ---------- CHAT ROOM ---------- -->
+  <section class="screen hidden" id="screen-room">
+    <div class="room-top">
+      <button class="ico-btn" id="roomBack">›</button>
+      <div class="room-ava" id="roomAva">CR</div>
+      <div class="room-info">
+        <div class="room-name" id="roomName">—</div>
+        <div class="room-state" id="roomState">آنلاین</div>
+      </div>
+      <button class="ico-btn" id="roomCall">📞</button>
+      <button class="ico-btn" id="roomVideo">🎥</button>
+      <button class="ico-btn" id="roomMenu">⋮</button>
+    </div>
+    <div class="msgs" id="msgs"></div>
+    <div class="quick-bar" id="quickBar"></div>
+    <div class="composer">
+      <button class="ico-btn" id="btnSticker">😊</button>
+      <input type="text" id="msgInput" placeholder="پیامت رو بنویس..." autocomplete="off">
+      <button class="ico-btn" id="btnVoice">🎤</button>
+      <button class="send-btn" id="btnSend">➤</button>
+    </div>
+    <div class="sticker-pan hidden" id="stickerPan"></div>
+  </section>
+
+  <!-- ---------- LIVE LIST ---------- -->
+  <section class="screen hidden" id="screen-lives">
+    <div class="topbar">
+      <div class="topbar-t"><div class="tb-title">لایوها</div><div class="tb-sub">پخش زنده ستاره‌ها</div></div>
+      <div class="live-dot">LIVE</div>
+    </div>
+    <div class="scroll">
+      <div class="sec-title">استوری‌ها</div>
+      <div class="story-row" id="storyRow"></div>
+      <div class="sec-title">در حال پخش زنده</div>
+      <div id="liveList" class="live-list"></div>
+      <div class="pad60"></div>
+    </div>
+  </section>
+
+  <!-- ---------- LIVE ROOM ---------- -->
+  <section class="screen hidden" id="screen-live">
+    <div class="live-stage" id="liveStage">
+      <div class="live-bg" id="liveBg"></div>
+      <div class="live-host" id="liveHostAva">CR</div>
+      <div class="live-say" id="liveSay"></div>
+
+      <div class="live-head">
+        <div class="lh-ava" id="lhAva">CR</div>
+        <div class="lh-name" id="lhName">—</div>
+        <button class="lh-follow" id="lhFollow">دنبال کردن</button>
+        <div class="lh-viewers" id="lhViewers">۰</div>
+        <button class="lh-close" id="lhClose">✕</button>
+      </div>
+
+      <div class="live-tag" id="liveTag">🔴 زنده</div>
+      <div class="joins" id="liveJoins"></div>
+      <div class="hearts" id="hearts"></div>
+      <div class="gift-fly" id="giftFly"></div>
+      <div class="comments" id="liveComments"></div>
+
+      <div class="live-bottom">
+        <input type="text" id="liveInput" placeholder="کامنت بذار..." autocomplete="off">
+        <button class="ico-btn" id="liveSend">➤</button>
+        <button class="ico-btn" id="liveGift">🎁</button>
+        <button class="ico-btn" id="liveHeart">❤</button>
+      </div>
+      <div class="gift-pan hidden" id="giftPan"></div>
+    </div>
+  </section>
+
+  <!-- ---------- MIRRORS ---------- -->
+  <section class="screen hidden" id="screen-mirror">
+    <div class="topbar">
+      <div class="topbar-t"><div class="tb-title">آینه‌های جادویی</div><div class="tb-sub">با اثر انگشت آینده‌ات رو ببین</div></div>
+    </div>
+    <div class="scroll"><div class="grid" id="mirrorGrid"></div><div class="sec-title">نتیجه‌های قبلی</div><div id="mirrorHistory" class="list-box"></div><div class="pad60"></div></div>
+  </section>
+
+  <!-- ---------- SCANNER ---------- -->
+  <section class="screen hidden" id="screen-scan">
+    <div class="room-top">
+      <button class="ico-btn" id="scanBack">›</button>
+      <div class="room-info"><div class="room-name" id="scanTitle">—</div><div class="room-state" id="scanSub">—</div></div>
+    </div>
+    <div class="scroll">
+      <div class="scan-wrap">
+        <div id="scanForm" class="scan-form"></div>
+        <div class="fp-pad big" id="scanPad">
+          <div class="fp-ring"></div>
+          <div class="fp-icon">☝</div>
+          <div class="fp-scan"></div>
+          <div class="fp-pct" id="scanPct"></div>
+        </div>
+        <div class="scan-hint" id="scanHint">انگشتت رو روی حسگر بذار و نگه دار</div>
+        <div class="result hidden" id="scanResult"></div>
+      </div>
+      <div class="pad60"></div>
+    </div>
+  </section>
+
+  <!-- ---------- LIE DETECTOR ---------- -->
+  <section class="screen hidden" id="screen-lie">
+    <div class="room-top">
+      <button class="ico-btn" id="lieBack">›</button>
+      <div class="room-info"><div class="room-name">🕵️ دروغ‌سنج</div><div class="room-state" id="lieState">حسگرها آماده‌اند</div></div>
+      <button class="ico-btn" id="lieInfo">ⓘ</button>
+    </div>
+    <div class="scroll" id="lieScroll"></div>
+  </section>
+
+  <!-- ---------- CALLS ---------- -->
+  <section class="screen hidden" id="screen-calls">
+    <div class="topbar">
+      <div class="topbar-t"><div class="tb-title">تماس‌ها</div><div class="tb-sub">زنگ بزن یا زمان تعیین کن</div></div>
+    </div>
+    <div class="scroll">
+      <div class="sec-title">تماس فوری</div>
+      <div class="chip-row" id="callQuick"></div>
+      <div class="sec-title">زمان‌بندی تماس</div>
+      <div class="card form" id="callForm">
+        <label>از طرف چه کسی؟</label>
+        <select id="calWho"></select>
+        <label>ساعت تماس</label>
+        <div class="time-row">
+          <select id="calH"></select><span class="colon">:</span><select id="calM"></select>
+        </div>
+        <label>نوع تماس</label>
+        <div class="seg" id="calType">
+          <button class="seg-b on" data-v="voice">صوتی</button>
+          <button class="seg-b" data-v="video">تصویری</button>
+        </div>
+        <label>تکرار</label>
+        <div class="seg" id="calRep">
+          <button class="seg-b on" data-v="once">یک‌بار</button>
+          <button class="seg-b" data-v="daily">هر روز</button>
+        </div>
+        <label>حرفی که بزنه (اختیاری)</label>
+        <input type="text" id="calMsg" placeholder="مثلا: پاشو دیگه تمرین داریم!">
+        <button class="big-btn" id="calSave">ثبت تماس</button>
+      </div>
+      <div class="sec-title">لیست تماس‌های ثبت‌شده</div>
+      <div id="alarmList" class="list-box"></div>
+      <div class="sec-title">تاریخچه تماس</div>
+      <div id="callHistory" class="list-box"></div>
+      <div class="pad60"></div>
+    </div>
+  </section>
+
+  <!-- ---------- PROFILE ---------- -->
+  <section class="screen hidden" id="screen-profile">
+    <div class="scroll" id="profScroll">
+      <div class="prof-head">
+        <div class="prof-ava" id="profAva">😎</div>
+        <div class="prof-stats">
+          <div class="ps"><b id="psPosts">۰</b><span>پست</span></div>
+          <div class="ps" id="psFolBox"><b id="psFol">۰</b><span>دنبال‌کننده</span></div>
+          <div class="ps"><b id="psFing">۰</b><span>دنبال‌شونده</span></div>
+        </div>
+      </div>
+      <div class="prof-name" id="profName">من <span class="vbadge" id="profV">✔</span></div>
+      <div class="prof-bio" id="profBio">—</div>
+      <div class="prof-btns">
+        <button class="mini-btn" id="btnEditProf">ویرایش پروفایل</button>
+        <button class="mini-btn green" id="btnBoost">افزایش فالوور 🚀</button>
+        <button class="mini-btn" id="btnGoLive">لایو من</button>
+      </div>
+      <div class="hl-row" id="hlRow"></div>
+      <div class="post-grid" id="postGrid"></div>
+      <div class="pad60"></div>
+    </div>
+  </section>
+
+  <!-- ---------- STAR PROFILE ---------- -->
+  <section class="screen hidden" id="screen-star">
+    <div class="room-top">
+      <button class="ico-btn" id="starBack">›</button>
+      <div class="room-info"><div class="room-name" id="starTitle">—</div><div class="room-state" id="starSub">—</div></div>
+    </div>
+    <div class="scroll" id="starScroll"></div>
+  </section>
+
+  <!-- ---------- SETTINGS ---------- -->
+  <section class="screen hidden" id="screen-set">
+    <div class="topbar"><div class="topbar-t"><div class="tb-title">تنظیمات</div><div class="tb-sub">شخصی‌سازی برنامه</div></div></div>
+    <div class="scroll">
+      <div class="card form">
+        <label>اسم تو</label>
+        <input type="text" id="setName" placeholder="اسمت رو بنویس">
+        <label>آواتار (ایموجی)</label>
+        <div class="emoji-row" id="setEmoji"></div>
+        <label>بیو پروفایل</label>
+        <input type="text" id="setBio" placeholder="یه چیز باحال بنویس">
+        <label>تعداد فالوور پروفایل</label>
+        <select id="setFol"></select>
+        <div class="sw-row"><span>تم روشن</span><button class="sw" id="swTheme"></button></div>
+        <div class="sw-row"><span>صدا</span><button class="sw on" id="swSound"></button></div>
+        <div class="sw-row"><span>لرزش</span><button class="sw on" id="swVibe"></button></div>
+        <div class="sw-row"><span>جلوه‌ها (روی تبلت ضعیف خاموش کن)</span><button class="sw on" id="swFx"></button></div>
+        <div class="sw-row"><span>قفل اثر انگشت موقع باز شدن</span><button class="sw" id="swLock"></button></div>
+        <div class="sw-row"><span>پیام‌های خودکار ستاره‌ها</span><button class="sw on" id="swPush"></button></div>
+        <button class="big-btn" id="setSave">ذخیره</button>
+        <button class="big-btn danger" id="setReset">پاک کردن همه چیز</button>
+      </div>
+      <div class="about">
+        ستاره لایو • نسخه ۱.۰<br>
+        ساخته‌شده برای Lenovo Tab 2 A7-30HC (اندروید ۴.۴)<br>
+        همه‌ی شخصیت‌ها شبیه‌سازی و سرگرمی هستند و ربطی به افراد واقعی ندارند.
+      </div>
+      <div class="pad60"></div>
+    </div>
+  </section>
+
+  <!-- ---------- TABBAR ---------- -->
+  <nav class="tabbar" id="tabbar">
+    <button class="tab on" data-s="home"><i>🏠</i><span>خانه</span></button>
+    <button class="tab" data-s="chats"><i>💬</i><span>پیام</span></button>
+    <button class="tab" data-s="lives"><i>📡</i><span>لایو</span></button>
+    <button class="tab" data-s="mirror"><i>🔮</i><span>آینه</span></button>
+    <button class="tab" data-s="calls"><i>📞</i><span>تماس</span></button>
+    <button class="tab" data-s="profile"><i>👤</i><span>پروفایل</span></button>
+    <button class="tab" data-s="set"><i>⚙</i><span>تنظیم</span></button>
+  </nav>
+</div>
+
+<!-- ================= INCOMING CALL ================= -->
+<div id="callScreen" class="call-screen hidden">
+  <div class="call-bg" id="callBg"></div>
+  <div class="call-top" id="callKind">تماس ورودی</div>
+  <div class="call-ava" id="callAva">CR</div>
+  <div class="call-name" id="callName">—</div>
+  <div class="call-state" id="callState">در حال زنگ خوردن...</div>
+  <div class="call-sub" id="callSub"></div>
+  <div class="call-actions" id="callActions">
+    <button class="cbtn red" id="callDecline">✕</button>
+    <button class="cbtn green" id="callAccept">📞</button>
+  </div>
+  <div class="call-actions2 hidden" id="callActions2">
+    <button class="cbtn2" id="callMute">🔇</button>
+    <button class="cbtn red" id="callEnd">✕</button>
+    <button class="cbtn2" id="callSpk">🔊</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<div id="popup" class="popup hidden"><div class="popup-box"><div id="popTitle" class="pop-t"></div><div id="popBody" class="pop-b"></div><div class="pop-a"><button id="popOk" class="mini-btn green">باشه</button><button id="popNo" class="mini-btn">بی‌خیال</button></div></div></div>
+
+<script src="js/core.js"></script>
+<script src="js/data.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/call.js"></script>
+<script src="js/mirror.js"></script>
+<script src="js/lie.js"></script>
+<script src="js/live.js"></script>
+<script src="js/social.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+name: Build StarLive APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['arena/**']
+    paths: ['tablet-app/**', '.github/workflows/build-apk.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: bash tablet-app/scripts/build-apk.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StarLive-APK
+          path: tablet-app/build/StarLive.apk
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "apk-${GITHUB_RUN_NUMBER}" tablet-app/build/StarLive.apk -t "StarLive APK" -n "StarLive" || true

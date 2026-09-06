@@ -93,7 +93,7 @@ Live.end = function () {
   if (mine) {
     var newF = rint(50, 1200) + Live.gifts * 30;
     S.followers += newF; saveSettings(); Social.renderProfile();
-    body += '<br>🎉 ' + fa(newF) + ' فالوور جدید گرفتی!';
+    body += '<br>🎉 ' + faNum(newF) + ' فالوور جدید گرفتی!';
   }
   popup(mine ? 'لایوت تموم شد' : 'لایو ' + name + ' تموم شد', body, null, 'باشه', false);
 };

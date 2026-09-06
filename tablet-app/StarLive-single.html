@@ -2123,7 +2123,7 @@ Mirror.compute = function () {
       line('وزن', pickS(['حدود ۵ کیلو بیشتر', 'تقریباً همین', 'فیت و ورزشکاری', 'کمی لاغرتر'], rnd)) +
       line('سبک لباس', pickS(['رسمی و شیک', 'اسپرت راحت', 'کلاسیک', 'خاص و متفاوت'], rnd)) +
       line('چهره', pickS(['خندون با خط لبخند', 'جدی و باوقار', 'مهربون و آروم', 'پرانرژی مثل الان'], rnd)) +
-      line('سن ظاهری', fa(rintS(-8, 3, rnd)) + ' سال نسبت به سن واقعی') +
+      line('سن ظاهری', fa(rintS(3, 9, rnd)) + ' سال جوان‌تر از سن واقعی') +
       '<div class="res-line">آدم‌ها می‌گن: «هیچ فرقی نکردی!» 😄</div>';
     shortT = 'شبیه‌سازی انجام شد';
     text = 'چهره ۲۰ سال بعد من شبیه‌سازی شد';
@@ -2610,7 +2610,7 @@ Live.end = function () {
   if (mine) {
     var newF = rint(50, 1200) + Live.gifts * 30;
     S.followers += newF; saveSettings(); Social.renderProfile();
-    body += '<br>🎉 ' + fa(newF) + ' فالوور جدید گرفتی!';
+    body += '<br>🎉 ' + faNum(newF) + ' فالوور جدید گرفتی!';
   }
   popup(mine ? 'لایوت تموم شد' : 'لایو ' + name + ' تموم شد', body, null, 'باشه', false);
 };

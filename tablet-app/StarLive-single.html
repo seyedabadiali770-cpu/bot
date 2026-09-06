@@ -342,6 +342,16 @@ body.theme-light .popup-box { background: #fff; border-color: #e2e6f0; }
   .comments { width: 50%; }
 }
 
+/* ---------- دوربین لایو ---------- */
+body.cam-on, body.cam-on .app, body.cam-on .screen, body.cam-on .live-stage { background: transparent !important; }
+body.cam-on .live-bg { background: -webkit-linear-gradient(top, rgba(0,0,0,.25), rgba(0,0,0,.55)) !important; }
+body.cam-on .live-host { display: none; }
+.cam-vid { position: absolute; z-index: 3; background: #000; }
+.cam-vid.full { top: 0; left: 0; width: 100%; height: 100%; }
+.cam-vid.pip { width: 108px; height: 146px; bottom: 62px; left: 8px; border-radius: 10px; border: 2px solid #fff; }
+.cam-tag { position: absolute; z-index: 4; bottom: 64px; left: 10px; background: rgba(0,0,0,.5); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 6px; }
+.rec-dot { position: absolute; z-index: 4; top: 58px; left: 12px; color: #fff; font-size: 11px; background: rgba(224,40,74,.85); padding: 3px 8px; border-radius: 5px; }
+
 </style>
 </head>
 <body class="theme-dark">
@@ -480,6 +490,8 @@ body.theme-light .popup-box { background: #fff; border-color: #e2e6f0; }
         <button class="ico-btn" id="liveSend">➤</button>
         <button class="ico-btn" id="liveGift">🎁</button>
         <button class="ico-btn" id="liveHeart">❤</button>
+        <button class="ico-btn" id="liveCam">🎥</button>
+        <button class="ico-btn" id="liveFlip">🔄</button>
       </div>
       <div class="gift-pan hidden" id="giftPan"></div>
     </div>
@@ -596,6 +608,15 @@ body.theme-light .popup-box { background: #fff; border-color: #e2e6f0; }
     <div class="scroll" id="starScroll"></div>
   </section>
 
+  <!-- ---------- HELP ---------- -->
+  <section class="screen hidden" id="screen-help">
+    <div class="room-top">
+      <button class="ico-btn" id="helpBack">›</button>
+      <div class="room-info"><div class="room-name">📘 راهنمای برنامه</div><div class="room-state">همه چیز رو اینجا یاد بگیر</div></div>
+    </div>
+    <div class="scroll" id="helpScroll"></div>
+  </section>
+
   <!-- ---------- SETTINGS ---------- -->
   <section class="screen hidden" id="screen-set">
     <div class="topbar"><div class="topbar-t"><div class="tb-title">تنظیمات</div><div class="tb-sub">شخصی‌سازی برنامه</div></div></div>
@@ -609,10 +630,21 @@ body.theme-light .popup-box { background: #fff; border-color: #e2e6f0; }
         <input type="text" id="setBio" placeholder="یه چیز باحال بنویس">
         <label>تعداد فالوور پروفایل</label>
         <select id="setFol"></select>
+        <label>صدای زنگ تماس</label>
+        <select id="setRing">
+          <option value="iphone">🍏 آیفون (مارimba)</option>
+          <option value="classic">📞 کلاسیک</option>
+          <option value="off">🔇 بی‌صدا</option>
+        </select>
+        <button class="mini-btn" id="setRingTest">▶ تست زنگ</button>
+        <label>رمز ورود به تنظیمات</label>
+        <input type="text" id="setPass" placeholder="رمز جدید">
+        <button class="mini-btn" id="btnHelp2">📘 راهنمای برنامه</button>
         <div class="sw-row"><span>تم روشن</span><button class="sw" id="swTheme"></button></div>
         <div class="sw-row"><span>صدا</span><button class="sw on" id="swSound"></button></div>
         <div class="sw-row"><span>لرزش</span><button class="sw on" id="swVibe"></button></div>
         <div class="sw-row"><span>جلوه‌ها (روی تبلت ضعیف خاموش کن)</span><button class="sw on" id="swFx"></button></div>
+        <div class="sw-row"><span>روشن شدن دوربین موقع لایو</span><button class="sw on" id="swCam"></button></div>
         <div class="sw-row"><span>قفل اثر انگشت موقع باز شدن</span><button class="sw" id="swLock"></button></div>
         <div class="sw-row"><span>پیام‌های خودکار ستاره‌ها</span><button class="sw on" id="swPush"></button></div>
         <button class="big-btn" id="setSave">ذخیره</button>
@@ -655,6 +687,20 @@ body.theme-light .popup-box { background: #fff; border-color: #e2e6f0; }
     <button class="cbtn2" id="callMute">🔇</button>
     <button class="cbtn red" id="callEnd">✕</button>
     <button class="cbtn2" id="callSpk">🔊</button>
+  </div>
+</div>
+
+<div id="passBox" class="popup hidden">
+  <div class="popup-box">
+    <div class="pop-t">🔒 ورود به تنظیمات</div>
+    <div class="pop-b" id="passMsg">رمز رو وارد کن</div>
+    <input type="password" id="passInput" placeholder="رمز عبور" autocomplete="off"
+      style="width:100%;height:44px;border-radius:10px;border:1px solid #2b3145;background:#1c2130;color:inherit;padding:0 10px;margin-top:10px;text-align:center;font-size:18px">
+    <div class="pop-a">
+      <button id="passShow" class="mini-btn">نمایش رمز</button>
+      <button id="passCancel" class="mini-btn">بی‌خیال</button>
+      <button id="passOk" class="mini-btn green">ورود</button>
+    </div>
   </div>
 </div>
 
@@ -734,7 +780,9 @@ var Store = {
 
 /* ---------- SETTINGS / STATE ---------- */
 var S = {
-  name: 'دوست من',
+  name: 'Ali849',
+  pass: 'Ali849',
+  ring: 'iphone',
   emoji: '😎',
   bio: 'اینجا فقط ستاره‌ها میان 🌟',
   followers: 2400000,
@@ -744,6 +792,7 @@ var S = {
   sound: true,
   vibe: true,
   fx: true,
+  cam: true,
   lock: false,
   push: true,
   coins: 1200,
@@ -859,15 +908,48 @@ var Snd = {
   ok: function () { var s = this; s.tone(523, 0.1); setTimeout(function () { s.tone(659, 0.1); }, 100); setTimeout(function () { s.tone(784, 0.16); }, 200); },
   err: function () { this.tone(180, 0.22, 'sawtooth', 0.08); },
   scan: function () { this.tone(1200, 0.04, 'square', 0.03); },
+  /* نت مارimba مانند زنگ آیفون */
+  mNote: function (freq, at, dur, vol) {
+    var c = this.ctx; if (!c) return;
+    try {
+      var o = c.createOscillator(), g = c.createGain(), o2 = c.createOscillator(), g2 = c.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      o2.type = 'sine'; o2.frequency.value = freq * 4.02;
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.linearRampToValueAtTime(vol, at + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      g2.gain.setValueAtTime(0.0001, at);
+      g2.gain.linearRampToValueAtTime(vol * 0.22, at + 0.005);
+      g2.gain.exponentialRampToValueAtTime(0.0001, at + dur * 0.35);
+      o.connect(g); g.connect(c.destination);
+      o2.connect(g2); g2.connect(c.destination);
+      o.start(at); o.stop(at + dur + 0.03);
+      o2.start(at); o2.stop(at + dur * 0.4 + 0.03);
+    } catch (e) {}
+  },
+  IPHONE_SEQ: [659.25, 493.88, 659.25, 493.88, 587.33, 440.00, 587.33, 440.00,
+               523.25, 392.00, 523.25, 392.00, 493.88, 369.99, 493.88, 369.99],
+  playIphone: function () {
+    var c = this.init(); if (!c || !S.sound) return 3.6;
+    var t0 = c.currentTime + 0.05, i, step = 0.152;
+    for (i = 0; i < this.IPHONE_SEQ.length; i++) {
+      this.mNote(this.IPHONE_SEQ[i], t0 + i * step, 0.5, i % 2 === 0 ? 0.30 : 0.20);
+    }
+    return this.IPHONE_SEQ.length * step + 0.9;
+  },
+  playClassic: function () {
+    var s = this;
+    s.tone(880, 0.28, 'sine', 0.13);
+    setTimeout(function () { s.tone(1100, 0.28, 'sine', 0.13); }, 320);
+    setTimeout(function () { s.tone(880, 0.28, 'sine', 0.13); }, 700);
+    return 1.7;
+  },
   startRing: function () {
     var s = this; this.stopRing();
-    function burst() {
-      s.tone(880, 0.28, 'sine', 0.13);
-      setTimeout(function () { s.tone(1100, 0.28, 'sine', 0.13); }, 320);
-      setTimeout(function () { s.tone(880, 0.28, 'sine', 0.13); }, 700);
-    }
-    burst();
-    this.ringTimer = setInterval(burst, 1700);
+    if (S.ring === 'off') return;
+    function burst() { return (S.ring === 'classic') ? s.playClassic() : s.playIphone(); }
+    var len = burst();
+    this.ringTimer = setInterval(function () { burst(); }, Math.round(len * 1000));
   },
   stopRing: function () { if (this.ringTimer) { clearInterval(this.ringTimer); this.ringTimer = null; } }
 };
@@ -899,11 +981,12 @@ function popup(title, body, onOk, okText, noText) {
 }
 
 /* ---------- ROUTER ---------- */
-var SCREENS = ['home', 'chats', 'room', 'lives', 'live', 'mirror', 'scan', 'lie', 'calls', 'profile', 'star', 'set'];
+var SCREENS = ['home', 'chats', 'room', 'lives', 'live', 'mirror', 'scan', 'lie', 'calls', 'profile', 'star', 'help', 'set'];
 var curScreen = 'home';
 var navStack = [];
 function go(name, noStack) {
   var i, el;
+  if (name === 'set' && App.gateSettings && !App.gateSettings()) return;
   if (!noStack && curScreen !== name) navStack.push(curScreen);
   for (i = 0; i < SCREENS.length; i++) {
     el = $('screen-' + SCREENS[i]);
@@ -2589,10 +2672,12 @@ Live.start = function (pid, mine) {
   if (Live.mine) Live.timers.push(setInterval(Live.tickGiftIn, 7000));
   Live.tickSay();
   Snd.pop();
+  Live.startCam(Live.mine ? 'full' : 'pip');
 };
 
 Live.stop = function () {
   var i;
+  Live.stopCam();
   for (i = 0; i < Live.timers.length; i++) clearInterval(Live.timers[i]);
   Live.timers = [];
 };
@@ -2722,6 +2807,97 @@ Chat.answerFor = function (p, text) {
   return String(a).split('\n')[0];
 };
 
+
+/* ---------- دوربین واقعی ---------- */
+Live.cam = { on: false, mode: 'full', el: null, stream: null, facing: 'front' };
+
+Live.nativeCam = function () { return !!(window.Android && window.Android.startCamera); };
+
+Live.startCam = function (mode) {
+  if (S.cam === false) return;
+  Live.cam.mode = mode || 'full';
+  /* حالت نیتیو (APK روی اندروید) */
+  if (Live.nativeCam()) {
+    try {
+      if (window.Android.hasCamera && !window.Android.hasCamera()) { toast('📷 دوربینی پیدا نشد'); return; }
+      window.Android.startCamera(Live.cam.facing, Live.cam.mode);
+      Live.cam.on = true;
+      if (Live.cam.mode === 'full' && document.body.className.indexOf('cam-on') < 0) {
+        document.body.className += ' cam-on';
+      }
+      Live.showRec(true);
+      return;
+    } catch (e) {}
+  }
+  /* حالت مرورگر */
+  var gum = null;
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) gum = 'new';
+  else if (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia) gum = 'old';
+  if (!gum) return;
+  var v = document.createElement('video');
+  v.className = 'cam-vid ' + Live.cam.mode;
+  v.setAttribute('autoplay', 'autoplay');
+  v.setAttribute('playsinline', 'playsinline');
+  v.muted = true;
+  $('liveStage').appendChild(v);
+  Live.cam.el = v;
+  function ok(stream) {
+    Live.cam.stream = stream;
+    try { v.srcObject = stream; } catch (e) { try { v.src = (window.URL || window.webkitURL).createObjectURL(stream); } catch (e2) {} }
+    try { v.play(); } catch (e) {}
+    Live.cam.on = true;
+    if (Live.cam.mode === 'full' && document.body.className.indexOf('cam-on') < 0) document.body.className += ' cam-on';
+    Live.showRec(true);
+  }
+  function fail() { Live.stopCam(); }
+  try {
+    if (gum === 'new') navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(ok)['catch'](fail);
+    else (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia).call(navigator, { video: true, audio: false }, ok, fail);
+  } catch (e) { fail(); }
+};
+
+Live.stopCam = function () {
+  Live.cam.on = false;
+  Live.showRec(false);
+  if (Live.nativeCam()) { try { window.Android.stopCamera(); } catch (e) {} }
+  if (Live.cam.stream) {
+    try {
+      var tr = Live.cam.stream.getTracks ? Live.cam.stream.getTracks() : [];
+      for (var i = 0; i < tr.length; i++) tr[i].stop();
+      if (!tr.length && Live.cam.stream.stop) Live.cam.stream.stop();
+    } catch (e) {}
+  }
+  Live.cam.stream = null;
+  if (Live.cam.el && Live.cam.el.parentNode) Live.cam.el.parentNode.removeChild(Live.cam.el);
+  Live.cam.el = null;
+  document.body.className = document.body.className.replace(/\s*cam-on/g, '');
+};
+
+Live.flipCam = function () {
+  if (!Live.cam.on) { toast('اول دوربین رو روشن کن 🎥'); return; }
+  Live.cam.facing = (Live.cam.facing === 'front') ? 'back' : 'front';
+  if (Live.nativeCam()) { try { window.Android.switchCamera(); } catch (e) {} }
+  else { var m = Live.cam.mode; Live.stopCam(); Live.startCam(m); }
+  toast(Live.cam.facing === 'front' ? '🤳 دوربین جلو' : '📷 دوربین عقب');
+};
+
+Live.toggleCam = function () {
+  if (Live.cam.on) { Live.stopCam(); toast('📷 دوربین خاموش شد'); }
+  else { Live.startCam(Live.mine ? 'full' : 'pip'); toast('🎥 دوربین روشن شد'); }
+};
+
+Live.showRec = function (on) {
+  var st = $('liveStage'), d = $('recDot');
+  if (on) {
+    if (!d) { d = elc('div', 'rec-dot', '● REC'); d.id = 'recDot'; st.appendChild(d); }
+    var t = $('camTag');
+    if (!t && Live.cam.mode === 'pip' && !Live.nativeCam()) { t = elc('div', 'cam-tag', 'شما'); t.id = 'camTag'; st.appendChild(t); }
+  } else {
+    if (d && d.parentNode) d.parentNode.removeChild(d);
+    var t2 = $('camTag'); if (t2 && t2.parentNode) t2.parentNode.removeChild(t2);
+  }
+};
+
 Live.init = function () {
   on($('lhClose'), 'click', function () { Live.end(); });
   on($('liveSend'), 'click', function () { Live.sendComment(); });
@@ -2738,6 +2914,8 @@ Live.init = function () {
     $('lhFollow').className = Live.followed ? 'lh-follow on' : 'lh-follow';
     if (Live.followed) { toast('حالا ' + Live.cur.short + ' رو دنبال می‌کنی ✅'); Snd.ok(); }
   });
+  on($('liveCam'), 'click', function () { Snd.tap(); Live.toggleCam(); });
+  on($('liveFlip'), 'click', function () { Snd.tap(); Live.flipCam(); });
   on($('liveGift'), 'click', function () {
     var pan = $('giftPan'), i, g, e;
     if (pan.className.indexOf('hidden') < 0) { hide(pan); return; }
@@ -2952,7 +3130,8 @@ var HOME_ITEMS = [
   { e: '⭐', t: 'صفحه ستاره‌ها', s: 'پروفایل', go: function () { Social.openStar(pick(PERSONAS).id); } },
   { e: '👶', t: 'تعداد فرزند', s: 'اثر انگشت', go: function () { go('mirror'); Mirror.open('kids'); } },
   { e: '💰', t: 'ثروت آینده', s: 'اثر انگشت', go: function () { go('mirror'); Mirror.open('wealth'); } },
-  { e: '⚙', t: 'تنظیمات', s: 'شخصی‌سازی', go: function () { go('set'); } }
+  { e: '📘', t: 'راهنما', s: 'آموزش کامل', go: function () { App.openHelp(); } },
+  { e: '⚙', t: 'تنظیمات', s: 'رمزدار 🔒', go: function () { go('set'); } }
 ];
 
 App.renderHome = function () {
@@ -3044,9 +3223,11 @@ App.fillSettings = function () {
     for (i = 0; i < opts.length; i++) { o = document.createElement('option'); o.value = opts[i]; o.innerHTML = compact(opts[i]); sel.appendChild(o); }
   }
   sel.value = S.followers > 88000000 ? 88000000 : (opts.indexOf ? (opts.indexOf(S.followers) >= 0 ? S.followers : opts[4]) : opts[4]);
+  if ($('setRing')) $('setRing').value = S.ring || 'iphone';
+  if ($('setPass')) $('setPass').value = S.pass || '';
   function sw(id, val) { $(id).className = val ? 'sw on' : 'sw'; }
   sw('swTheme', S.theme === 'light'); sw('swSound', S.sound); sw('swVibe', S.vibe);
-  sw('swFx', S.fx); sw('swLock', S.lock); sw('swPush', S.push);
+  sw('swFx', S.fx); sw('swLock', S.lock); sw('swPush', S.push); sw('swCam', S.cam !== false);
 };
 
 App.initSettings = function () {
@@ -3064,19 +3245,94 @@ App.initSettings = function () {
     document.body.className = v ? 'theme-light' : 'theme-dark';
   });
   toggle('swSound', 'sound'); toggle('swVibe', 'vibe'); toggle('swFx', 'fx');
+  toggle('swCam', 'cam', function (v) { if (!v && Live.cam.on) Live.stopCam(); });
   toggle('swLock', 'lock'); toggle('swPush', 'push');
   on($('setSave'), 'click', function () {
     S.name = $('setName').value || 'دوست من';
     S.bio = $('setBio').value || S.bio;
     S.followers = parseInt($('setFol').value, 10) || S.followers;
+    S.ring = $('setRing').value;
+    if ($('setPass').value) S.pass = $('setPass').value;
     saveSettings(); Social.renderProfile(); App.renderHome();
     Snd.ok(); toast('ذخیره شد ✅');
   });
+  on($('setRingTest'), 'click', function () {
+    S.ring = $('setRing').value; saveSettings();
+    Snd.startRing();
+    toast('🔔 در حال پخش زنگ... (۵ ثانیه)');
+    setTimeout(function () { Snd.stopRing(); }, 5000);
+  });
+  on($('btnHelp2'), 'click', function () { App.openHelp(); });
+  on($('helpBack'), 'click', function () { goBack(); });
   on($('setReset'), 'click', function () {
     popup('پاک کردن همه چیز', 'همه‌ی چت‌ها، تماس‌ها و نتیجه‌ها پاک بشه؟', function () {
       Store.clearAll(); location.reload();
     }, 'آره پاک کن', 'نه');
   });
+};
+
+/* ---------- قفل رمز تنظیمات ---------- */
+App.setUnlocked = false;
+App.gateSettings = function () {
+  if (App.setUnlocked) return true;
+  if (!S.pass) return true;
+  var box = $('passBox');
+  $('passInput').value = '';
+  $('passInput').type = 'password';
+  $('passMsg').innerHTML = 'رمز رو وارد کن';
+  show(box);
+  setTimeout(function () { try { $('passInput').focus(); } catch (e) {} }, 200);
+  return false;
+};
+App.initPass = function () {
+  function tryPass() {
+    var v = $('passInput').value;
+    if (v === S.pass) {
+      App.setUnlocked = true;
+      hide($('passBox'));
+      Snd.ok(); vibe(60);
+      toast('✅ خوش اومدی ' + esc(S.name));
+      go('set');
+    } else {
+      Snd.err(); vibe(200);
+      $('passMsg').innerHTML = '<span style="color:#e0284a">رمز اشتباهه! دوباره امتحان کن</span>';
+      $('passInput').value = '';
+    }
+  }
+  on($('passOk'), 'click', tryPass);
+  on($('passInput'), 'keydown', function (e) { if (e.keyCode === 13) { tryPass(); e.preventDefault(); } });
+  on($('passCancel'), 'click', function () { hide($('passBox')); go('home', true); });
+  on($('passShow'), 'click', function () {
+    var i = $('passInput');
+    i.type = (i.type === 'password') ? 'text' : 'password';
+    $('passShow').innerHTML = (i.type === 'password') ? 'نمایش رمز' : 'مخفی کردن';
+  });
+};
+
+/* ---------- راهنما ---------- */
+var HELP = [
+  { e: '🏠', t: 'صفحه خانه', d: 'بالای صفحه اسم تو، تاریخ شمسی و ساعت رو نشون می‌ده. کارت بالایی رونالدوئه؛ دکمه «پیام» می‌بردت به چت و «تماس» همون لحظه بهت زنگ می‌زنه. پایین‌تر آمار امروز (انرژی، شانس، سکه) و تماس‌های زمان‌بندی‌شده رو می‌بینی.' },
+  { e: '💬', t: 'چت با ستاره‌ها', d: 'از تب «پیام» یکی از ۸ ستاره رو انتخاب کن. می‌تونی تایپ کنی یا از نوار پیام‌های آماده بالای کیبورد یکی رو بزنی. دکمه 😊 استیکر می‌فرسته، 🎤 پیام صوتی و ⋮ گفتگو رو پاک می‌کنه. اگه بنویسی «اسمم علیه» اسمت رو یاد می‌گیره.' },
+  { e: '📞', t: 'تماس و زمان‌بندی', d: 'تب «تماس»: بالای صفحه با یک ضربه روی اسم هر ستاره، همون لحظه بهت زنگ می‌زنه. پایین‌تر فرم زمان‌بندی هست: شخص، ساعت، صوتی یا تصویری، یک‌بار یا هر روز، و جمله‌ای که موقع تماس می‌گه. بزن «ثبت تماس». سر ساعت، حتی اگه برنامه بسته باشه، تبلت زنگ می‌خوره.' },
+  { e: '📡', t: 'لایو', d: 'تب «لایو»: بالا استوری‌ها و پایین لایوهای زنده. وارد لایو که بشی بیننده‌ها، کامنت‌ها و قلب‌ها میان. اگه کامنت بذاری، ستاره با اسم خودت بهت جواب می‌ده. دکمه 🎁 هدیه می‌فرسته (سکه کم می‌شه) و ❤️ قلب پرت می‌کنه.' },
+  { e: '🔴', t: 'لایو خودت', d: 'از پروفایل دکمه «لایو من» رو بزن. بیننده و کامنت و هدیه می‌گیری و آخرش فالوور جدید بهت اضافه می‌شه.' },
+  { e: '🔮', t: 'آینه‌های اثر انگشت', d: 'تب «آینه»: ۱۴ آینه مثل شغل آینده، همسر آینده، سن ازدواج، ثروت، تعداد فرزند، شخصیت‌شناسی، درصد عشق، فال حافظ و شانس امروز. اسمت رو بنویس، بعد انگشتت رو روی دایره بذار و تا ۱۰۰٪ نگه دار. نتیجه هر اسم همیشه ثابت می‌مونه.' },
+  { e: '🕵️', t: 'دروغ‌سنج', d: 'اول ۳ سؤال کنترلی می‌پرسه تا حالت عادی بدنت اندازه‌گیری بشه. انگشتت رو نگه دار، صبر کن سؤال بیاد، بلند جواب بده و بعد «بله» یا «خیر» رو بزن. زمان واکنش، لرزش دستت، فشار انگشت و صدات اندازه‌گیری می‌شه. آخرش درصد صداقت هر جواب رو نشون می‌ده.' },
+  { e: '👤', t: 'پروفایل', d: 'فالوور، پست، بیو و تیک آبی. «افزایش فالوور 🚀» فالوور و سکه اضافه می‌کنه، «لایو من» لایوت رو شروع می‌کنه.' },
+  { e: '⚙️', t: 'تنظیمات (رمزدار)', d: 'فقط با رمز باز می‌شه. می‌تونی اسم، آواتار، بیو، تعداد فالوور، صدای زنگ (آیفون/کلاسیک/بی‌صدا) و رمز رو عوض کنی. اگه تبلت کند شد، «جلوه‌ها» رو خاموش کن. «قفل اثر انگشت» یعنی موقع باز کردن برنامه باید انگشتت رو نگه داری.' },
+  { e: '🔑', t: 'رمز تو', d: 'رمز فعلی ورود به تنظیمات همون رمزیه که خودت انتخاب کردی. اگه عوضش کردی و یادت رفت، تنها راه پاک کردن اطلاعات برنامه از تنظیمات اندروید (Clear data) هست.' },
+  { e: '💡', t: 'نکته‌ها', d: 'برای نتیجه بهتر دروغ‌سنج تبلت رو دستت بگیر. برای زنگ خوردن سر ساعت، برنامه رو از لیست برنامه‌های اخیر پاک نکن. همه شخصیت‌ها شبیه‌سازی و برای سرگرمی‌ان.' }
+];
+App.openHelp = function () {
+  var box = $('helpScroll'), i, h = '<div class="card" style="margin-top:10px">';
+  h += '<div class="res-h">📘 راهنمای ستاره لایو</div><div class="res-sub">هر بخش رو کوتاه توضیح دادم</div></div>';
+  for (i = 0; i < HELP.length; i++) {
+    h += '<div class="card" style="margin-top:8px"><div style="font-weight:bold;font-size:15px;margin-bottom:5px">' +
+      HELP[i].e + ' ' + HELP[i].t + '</div><div style="font-size:13.5px;line-height:2;color:#a7b0c9">' + HELP[i].d + '</div></div>';
+  }
+  h += '<div class="pad60"></div>';
+  box.innerHTML = h;
+  go('help');
 };
 
 /* ---------- بوت ---------- */
@@ -3091,7 +3347,7 @@ App.boot = function () {
     })(tabs[i]);
   }
 
-  Chat.init(); Calls.init(); Mirror.init(); Lie.init(); Live.init(); Social.init(); App.initSettings();
+  Chat.init(); Calls.init(); Mirror.init(); Lie.init(); Live.init(); Social.init(); App.initSettings(); App.initPass();
 
   on($('heroChat'), 'click', function () { Chat.open('cr7'); });
   on($('heroCall'), 'click', function () { Calls.incoming('cr7', 'voice', ''); });

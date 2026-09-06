@@ -143,6 +143,8 @@
         <button class="ico-btn" id="liveSend">➤</button>
         <button class="ico-btn" id="liveGift">🎁</button>
         <button class="ico-btn" id="liveHeart">❤</button>
+        <button class="ico-btn" id="liveCam">🎥</button>
+        <button class="ico-btn" id="liveFlip">🔄</button>
       </div>
       <div class="gift-pan hidden" id="giftPan"></div>
     </div>
@@ -259,6 +261,15 @@
     <div class="scroll" id="starScroll"></div>
   </section>
 
+  <!-- ---------- HELP ---------- -->
+  <section class="screen hidden" id="screen-help">
+    <div class="room-top">
+      <button class="ico-btn" id="helpBack">›</button>
+      <div class="room-info"><div class="room-name">📘 راهنمای برنامه</div><div class="room-state">همه چیز رو اینجا یاد بگیر</div></div>
+    </div>
+    <div class="scroll" id="helpScroll"></div>
+  </section>
+
   <!-- ---------- SETTINGS ---------- -->
   <section class="screen hidden" id="screen-set">
     <div class="topbar"><div class="topbar-t"><div class="tb-title">تنظیمات</div><div class="tb-sub">شخصی‌سازی برنامه</div></div></div>
@@ -272,10 +283,21 @@
         <input type="text" id="setBio" placeholder="یه چیز باحال بنویس">
         <label>تعداد فالوور پروفایل</label>
         <select id="setFol"></select>
+        <label>صدای زنگ تماس</label>
+        <select id="setRing">
+          <option value="iphone">🍏 آیفون (مارimba)</option>
+          <option value="classic">📞 کلاسیک</option>
+          <option value="off">🔇 بی‌صدا</option>
+        </select>
+        <button class="mini-btn" id="setRingTest">▶ تست زنگ</button>
+        <label>رمز ورود به تنظیمات</label>
+        <input type="text" id="setPass" placeholder="رمز جدید">
+        <button class="mini-btn" id="btnHelp2">📘 راهنمای برنامه</button>
         <div class="sw-row"><span>تم روشن</span><button class="sw" id="swTheme"></button></div>
         <div class="sw-row"><span>صدا</span><button class="sw on" id="swSound"></button></div>
         <div class="sw-row"><span>لرزش</span><button class="sw on" id="swVibe"></button></div>
         <div class="sw-row"><span>جلوه‌ها (روی تبلت ضعیف خاموش کن)</span><button class="sw on" id="swFx"></button></div>
+        <div class="sw-row"><span>روشن شدن دوربین موقع لایو</span><button class="sw on" id="swCam"></button></div>
         <div class="sw-row"><span>قفل اثر انگشت موقع باز شدن</span><button class="sw" id="swLock"></button></div>
         <div class="sw-row"><span>پیام‌های خودکار ستاره‌ها</span><button class="sw on" id="swPush"></button></div>
         <button class="big-btn" id="setSave">ذخیره</button>
@@ -318,6 +340,20 @@
     <button class="cbtn2" id="callMute">🔇</button>
     <button class="cbtn red" id="callEnd">✕</button>
     <button class="cbtn2" id="callSpk">🔊</button>
+  </div>
+</div>
+
+<div id="passBox" class="popup hidden">
+  <div class="popup-box">
+    <div class="pop-t">🔒 ورود به تنظیمات</div>
+    <div class="pop-b" id="passMsg">رمز رو وارد کن</div>
+    <input type="password" id="passInput" placeholder="رمز عبور" autocomplete="off"
+      style="width:100%;height:44px;border-radius:10px;border:1px solid #2b3145;background:#1c2130;color:inherit;padding:0 10px;margin-top:10px;text-align:center;font-size:18px">
+    <div class="pop-a">
+      <button id="passShow" class="mini-btn">نمایش رمز</button>
+      <button id="passCancel" class="mini-btn">بی‌خیال</button>
+      <button id="passOk" class="mini-btn green">ورود</button>
+    </div>
   </div>
 </div>
 

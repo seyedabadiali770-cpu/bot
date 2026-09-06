@@ -70,7 +70,9 @@ var Store = {
 
 /* ---------- SETTINGS / STATE ---------- */
 var S = {
-  name: 'دوست من',
+  name: 'Ali849',
+  pass: 'Ali849',
+  ring: 'iphone',
   emoji: '😎',
   bio: 'اینجا فقط ستاره‌ها میان 🌟',
   followers: 2400000,
@@ -80,6 +82,7 @@ var S = {
   sound: true,
   vibe: true,
   fx: true,
+  cam: true,
   lock: false,
   push: true,
   coins: 1200,
@@ -195,15 +198,48 @@ var Snd = {
   ok: function () { var s = this; s.tone(523, 0.1); setTimeout(function () { s.tone(659, 0.1); }, 100); setTimeout(function () { s.tone(784, 0.16); }, 200); },
   err: function () { this.tone(180, 0.22, 'sawtooth', 0.08); },
   scan: function () { this.tone(1200, 0.04, 'square', 0.03); },
+  /* نت مارimba مانند زنگ آیفون */
+  mNote: function (freq, at, dur, vol) {
+    var c = this.ctx; if (!c) return;
+    try {
+      var o = c.createOscillator(), g = c.createGain(), o2 = c.createOscillator(), g2 = c.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      o2.type = 'sine'; o2.frequency.value = freq * 4.02;
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.linearRampToValueAtTime(vol, at + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      g2.gain.setValueAtTime(0.0001, at);
+      g2.gain.linearRampToValueAtTime(vol * 0.22, at + 0.005);
+      g2.gain.exponentialRampToValueAtTime(0.0001, at + dur * 0.35);
+      o.connect(g); g.connect(c.destination);
+      o2.connect(g2); g2.connect(c.destination);
+      o.start(at); o.stop(at + dur + 0.03);
+      o2.start(at); o2.stop(at + dur * 0.4 + 0.03);
+    } catch (e) {}
+  },
+  IPHONE_SEQ: [659.25, 493.88, 659.25, 493.88, 587.33, 440.00, 587.33, 440.00,
+               523.25, 392.00, 523.25, 392.00, 493.88, 369.99, 493.88, 369.99],
+  playIphone: function () {
+    var c = this.init(); if (!c || !S.sound) return 3.6;
+    var t0 = c.currentTime + 0.05, i, step = 0.152;
+    for (i = 0; i < this.IPHONE_SEQ.length; i++) {
+      this.mNote(this.IPHONE_SEQ[i], t0 + i * step, 0.5, i % 2 === 0 ? 0.30 : 0.20);
+    }
+    return this.IPHONE_SEQ.length * step + 0.9;
+  },
+  playClassic: function () {
+    var s = this;
+    s.tone(880, 0.28, 'sine', 0.13);
+    setTimeout(function () { s.tone(1100, 0.28, 'sine', 0.13); }, 320);
+    setTimeout(function () { s.tone(880, 0.28, 'sine', 0.13); }, 700);
+    return 1.7;
+  },
   startRing: function () {
     var s = this; this.stopRing();
-    function burst() {
-      s.tone(880, 0.28, 'sine', 0.13);
-      setTimeout(function () { s.tone(1100, 0.28, 'sine', 0.13); }, 320);
-      setTimeout(function () { s.tone(880, 0.28, 'sine', 0.13); }, 700);
-    }
-    burst();
-    this.ringTimer = setInterval(burst, 1700);
+    if (S.ring === 'off') return;
+    function burst() { return (S.ring === 'classic') ? s.playClassic() : s.playIphone(); }
+    var len = burst();
+    this.ringTimer = setInterval(function () { burst(); }, Math.round(len * 1000));
   },
   stopRing: function () { if (this.ringTimer) { clearInterval(this.ringTimer); this.ringTimer = null; } }
 };
@@ -235,11 +271,12 @@ function popup(title, body, onOk, okText, noText) {
 }
 
 /* ---------- ROUTER ---------- */
-var SCREENS = ['home', 'chats', 'room', 'lives', 'live', 'mirror', 'scan', 'lie', 'calls', 'profile', 'star', 'set'];
+var SCREENS = ['home', 'chats', 'room', 'lives', 'live', 'mirror', 'scan', 'lie', 'calls', 'profile', 'star', 'help', 'set'];
 var curScreen = 'home';
 var navStack = [];
 function go(name, noStack) {
   var i, el;
+  if (name === 'set' && App.gateSettings && !App.gateSettings()) return;
   if (!noStack && curScreen !== name) navStack.push(curScreen);
   for (i = 0; i < SCREENS.length; i++) {
     el = $('screen-' + SCREENS[i]);

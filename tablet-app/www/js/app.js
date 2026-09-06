@@ -15,7 +15,8 @@ var HOME_ITEMS = [
   { e: '⭐', t: 'صفحه ستاره‌ها', s: 'پروفایل', go: function () { Social.openStar(pick(PERSONAS).id); } },
   { e: '👶', t: 'تعداد فرزند', s: 'اثر انگشت', go: function () { go('mirror'); Mirror.open('kids'); } },
   { e: '💰', t: 'ثروت آینده', s: 'اثر انگشت', go: function () { go('mirror'); Mirror.open('wealth'); } },
-  { e: '⚙', t: 'تنظیمات', s: 'شخصی‌سازی', go: function () { go('set'); } }
+  { e: '📘', t: 'راهنما', s: 'آموزش کامل', go: function () { App.openHelp(); } },
+  { e: '⚙', t: 'تنظیمات', s: 'رمزدار 🔒', go: function () { go('set'); } }
 ];
 
 App.renderHome = function () {
@@ -107,9 +108,11 @@ App.fillSettings = function () {
     for (i = 0; i < opts.length; i++) { o = document.createElement('option'); o.value = opts[i]; o.innerHTML = compact(opts[i]); sel.appendChild(o); }
   }
   sel.value = S.followers > 88000000 ? 88000000 : (opts.indexOf ? (opts.indexOf(S.followers) >= 0 ? S.followers : opts[4]) : opts[4]);
+  if ($('setRing')) $('setRing').value = S.ring || 'iphone';
+  if ($('setPass')) $('setPass').value = S.pass || '';
   function sw(id, val) { $(id).className = val ? 'sw on' : 'sw'; }
   sw('swTheme', S.theme === 'light'); sw('swSound', S.sound); sw('swVibe', S.vibe);
-  sw('swFx', S.fx); sw('swLock', S.lock); sw('swPush', S.push);
+  sw('swFx', S.fx); sw('swLock', S.lock); sw('swPush', S.push); sw('swCam', S.cam !== false);
 };
 
 App.initSettings = function () {
@@ -127,19 +130,94 @@ App.initSettings = function () {
     document.body.className = v ? 'theme-light' : 'theme-dark';
   });
   toggle('swSound', 'sound'); toggle('swVibe', 'vibe'); toggle('swFx', 'fx');
+  toggle('swCam', 'cam', function (v) { if (!v && Live.cam.on) Live.stopCam(); });
   toggle('swLock', 'lock'); toggle('swPush', 'push');
   on($('setSave'), 'click', function () {
     S.name = $('setName').value || 'دوست من';
     S.bio = $('setBio').value || S.bio;
     S.followers = parseInt($('setFol').value, 10) || S.followers;
+    S.ring = $('setRing').value;
+    if ($('setPass').value) S.pass = $('setPass').value;
     saveSettings(); Social.renderProfile(); App.renderHome();
     Snd.ok(); toast('ذخیره شد ✅');
   });
+  on($('setRingTest'), 'click', function () {
+    S.ring = $('setRing').value; saveSettings();
+    Snd.startRing();
+    toast('🔔 در حال پخش زنگ... (۵ ثانیه)');
+    setTimeout(function () { Snd.stopRing(); }, 5000);
+  });
+  on($('btnHelp2'), 'click', function () { App.openHelp(); });
+  on($('helpBack'), 'click', function () { goBack(); });
   on($('setReset'), 'click', function () {
     popup('پاک کردن همه چیز', 'همه‌ی چت‌ها، تماس‌ها و نتیجه‌ها پاک بشه؟', function () {
       Store.clearAll(); location.reload();
     }, 'آره پاک کن', 'نه');
   });
+};
+
+/* ---------- قفل رمز تنظیمات ---------- */
+App.setUnlocked = false;
+App.gateSettings = function () {
+  if (App.setUnlocked) return true;
+  if (!S.pass) return true;
+  var box = $('passBox');
+  $('passInput').value = '';
+  $('passInput').type = 'password';
+  $('passMsg').innerHTML = 'رمز رو وارد کن';
+  show(box);
+  setTimeout(function () { try { $('passInput').focus(); } catch (e) {} }, 200);
+  return false;
+};
+App.initPass = function () {
+  function tryPass() {
+    var v = $('passInput').value;
+    if (v === S.pass) {
+      App.setUnlocked = true;
+      hide($('passBox'));
+      Snd.ok(); vibe(60);
+      toast('✅ خوش اومدی ' + esc(S.name));
+      go('set');
+    } else {
+      Snd.err(); vibe(200);
+      $('passMsg').innerHTML = '<span style="color:#e0284a">رمز اشتباهه! دوباره امتحان کن</span>';
+      $('passInput').value = '';
+    }
+  }
+  on($('passOk'), 'click', tryPass);
+  on($('passInput'), 'keydown', function (e) { if (e.keyCode === 13) { tryPass(); e.preventDefault(); } });
+  on($('passCancel'), 'click', function () { hide($('passBox')); go('home', true); });
+  on($('passShow'), 'click', function () {
+    var i = $('passInput');
+    i.type = (i.type === 'password') ? 'text' : 'password';
+    $('passShow').innerHTML = (i.type === 'password') ? 'نمایش رمز' : 'مخفی کردن';
+  });
+};
+
+/* ---------- راهنما ---------- */
+var HELP = [
+  { e: '🏠', t: 'صفحه خانه', d: 'بالای صفحه اسم تو، تاریخ شمسی و ساعت رو نشون می‌ده. کارت بالایی رونالدوئه؛ دکمه «پیام» می‌بردت به چت و «تماس» همون لحظه بهت زنگ می‌زنه. پایین‌تر آمار امروز (انرژی، شانس، سکه) و تماس‌های زمان‌بندی‌شده رو می‌بینی.' },
+  { e: '💬', t: 'چت با ستاره‌ها', d: 'از تب «پیام» یکی از ۸ ستاره رو انتخاب کن. می‌تونی تایپ کنی یا از نوار پیام‌های آماده بالای کیبورد یکی رو بزنی. دکمه 😊 استیکر می‌فرسته، 🎤 پیام صوتی و ⋮ گفتگو رو پاک می‌کنه. اگه بنویسی «اسمم علیه» اسمت رو یاد می‌گیره.' },
+  { e: '📞', t: 'تماس و زمان‌بندی', d: 'تب «تماس»: بالای صفحه با یک ضربه روی اسم هر ستاره، همون لحظه بهت زنگ می‌زنه. پایین‌تر فرم زمان‌بندی هست: شخص، ساعت، صوتی یا تصویری، یک‌بار یا هر روز، و جمله‌ای که موقع تماس می‌گه. بزن «ثبت تماس». سر ساعت، حتی اگه برنامه بسته باشه، تبلت زنگ می‌خوره.' },
+  { e: '📡', t: 'لایو', d: 'تب «لایو»: بالا استوری‌ها و پایین لایوهای زنده. وارد لایو که بشی بیننده‌ها، کامنت‌ها و قلب‌ها میان. اگه کامنت بذاری، ستاره با اسم خودت بهت جواب می‌ده. دکمه 🎁 هدیه می‌فرسته (سکه کم می‌شه) و ❤️ قلب پرت می‌کنه.' },
+  { e: '🔴', t: 'لایو خودت', d: 'از پروفایل دکمه «لایو من» رو بزن. بیننده و کامنت و هدیه می‌گیری و آخرش فالوور جدید بهت اضافه می‌شه.' },
+  { e: '🔮', t: 'آینه‌های اثر انگشت', d: 'تب «آینه»: ۱۴ آینه مثل شغل آینده، همسر آینده، سن ازدواج، ثروت، تعداد فرزند، شخصیت‌شناسی، درصد عشق، فال حافظ و شانس امروز. اسمت رو بنویس، بعد انگشتت رو روی دایره بذار و تا ۱۰۰٪ نگه دار. نتیجه هر اسم همیشه ثابت می‌مونه.' },
+  { e: '🕵️', t: 'دروغ‌سنج', d: 'اول ۳ سؤال کنترلی می‌پرسه تا حالت عادی بدنت اندازه‌گیری بشه. انگشتت رو نگه دار، صبر کن سؤال بیاد، بلند جواب بده و بعد «بله» یا «خیر» رو بزن. زمان واکنش، لرزش دستت، فشار انگشت و صدات اندازه‌گیری می‌شه. آخرش درصد صداقت هر جواب رو نشون می‌ده.' },
+  { e: '👤', t: 'پروفایل', d: 'فالوور، پست، بیو و تیک آبی. «افزایش فالوور 🚀» فالوور و سکه اضافه می‌کنه، «لایو من» لایوت رو شروع می‌کنه.' },
+  { e: '⚙️', t: 'تنظیمات (رمزدار)', d: 'فقط با رمز باز می‌شه. می‌تونی اسم، آواتار، بیو، تعداد فالوور، صدای زنگ (آیفون/کلاسیک/بی‌صدا) و رمز رو عوض کنی. اگه تبلت کند شد، «جلوه‌ها» رو خاموش کن. «قفل اثر انگشت» یعنی موقع باز کردن برنامه باید انگشتت رو نگه داری.' },
+  { e: '🔑', t: 'رمز تو', d: 'رمز فعلی ورود به تنظیمات همون رمزیه که خودت انتخاب کردی. اگه عوضش کردی و یادت رفت، تنها راه پاک کردن اطلاعات برنامه از تنظیمات اندروید (Clear data) هست.' },
+  { e: '💡', t: 'نکته‌ها', d: 'برای نتیجه بهتر دروغ‌سنج تبلت رو دستت بگیر. برای زنگ خوردن سر ساعت، برنامه رو از لیست برنامه‌های اخیر پاک نکن. همه شخصیت‌ها شبیه‌سازی و برای سرگرمی‌ان.' }
+];
+App.openHelp = function () {
+  var box = $('helpScroll'), i, h = '<div class="card" style="margin-top:10px">';
+  h += '<div class="res-h">📘 راهنمای ستاره لایو</div><div class="res-sub">هر بخش رو کوتاه توضیح دادم</div></div>';
+  for (i = 0; i < HELP.length; i++) {
+    h += '<div class="card" style="margin-top:8px"><div style="font-weight:bold;font-size:15px;margin-bottom:5px">' +
+      HELP[i].e + ' ' + HELP[i].t + '</div><div style="font-size:13.5px;line-height:2;color:#a7b0c9">' + HELP[i].d + '</div></div>';
+  }
+  h += '<div class="pad60"></div>';
+  box.innerHTML = h;
+  go('help');
 };
 
 /* ---------- بوت ---------- */
@@ -154,7 +232,7 @@ App.boot = function () {
     })(tabs[i]);
   }
 
-  Chat.init(); Calls.init(); Mirror.init(); Lie.init(); Live.init(); Social.init(); App.initSettings();
+  Chat.init(); Calls.init(); Mirror.init(); Lie.init(); Live.init(); Social.init(); App.initSettings(); App.initPass();
 
   on($('heroChat'), 'click', function () { Chat.open('cr7'); });
   on($('heroCall'), 'click', function () { Calls.incoming('cr7', 'voice', ''); });

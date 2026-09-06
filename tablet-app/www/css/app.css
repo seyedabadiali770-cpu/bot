@@ -333,3 +333,13 @@ body.theme-light .popup-box { background: #fff; border-color: #e2e6f0; }
   .live-host { top: 14%; }
   .comments { width: 50%; }
 }
+
+/* ---------- دوربین لایو ---------- */
+body.cam-on, body.cam-on .app, body.cam-on .screen, body.cam-on .live-stage { background: transparent !important; }
+body.cam-on .live-bg { background: -webkit-linear-gradient(top, rgba(0,0,0,.25), rgba(0,0,0,.55)) !important; }
+body.cam-on .live-host { display: none; }
+.cam-vid { position: absolute; z-index: 3; background: #000; }
+.cam-vid.full { top: 0; left: 0; width: 100%; height: 100%; }
+.cam-vid.pip { width: 108px; height: 146px; bottom: 62px; left: 8px; border-radius: 10px; border: 2px solid #fff; }
+.cam-tag { position: absolute; z-index: 4; bottom: 64px; left: 10px; background: rgba(0,0,0,.5); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 6px; }
+.rec-dot { position: absolute; z-index: 4; top: 58px; left: 12px; color: #fff; font-size: 11px; background: rgba(224,40,74,.85); padding: 3px 8px; border-radius: 5px; }

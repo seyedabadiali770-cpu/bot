@@ -72,10 +72,12 @@ Live.start = function (pid, mine) {
   if (Live.mine) Live.timers.push(setInterval(Live.tickGiftIn, 7000));
   Live.tickSay();
   Snd.pop();
+  Live.startCam(Live.mine ? 'full' : 'pip');
 };
 
 Live.stop = function () {
   var i;
+  Live.stopCam();
   for (i = 0; i < Live.timers.length; i++) clearInterval(Live.timers[i]);
   Live.timers = [];
 };
@@ -205,6 +207,97 @@ Chat.answerFor = function (p, text) {
   return String(a).split('\n')[0];
 };
 
+
+/* ---------- دوربین واقعی ---------- */
+Live.cam = { on: false, mode: 'full', el: null, stream: null, facing: 'front' };
+
+Live.nativeCam = function () { return !!(window.Android && window.Android.startCamera); };
+
+Live.startCam = function (mode) {
+  if (S.cam === false) return;
+  Live.cam.mode = mode || 'full';
+  /* حالت نیتیو (APK روی اندروید) */
+  if (Live.nativeCam()) {
+    try {
+      if (window.Android.hasCamera && !window.Android.hasCamera()) { toast('📷 دوربینی پیدا نشد'); return; }
+      window.Android.startCamera(Live.cam.facing, Live.cam.mode);
+      Live.cam.on = true;
+      if (Live.cam.mode === 'full' && document.body.className.indexOf('cam-on') < 0) {
+        document.body.className += ' cam-on';
+      }
+      Live.showRec(true);
+      return;
+    } catch (e) {}
+  }
+  /* حالت مرورگر */
+  var gum = null;
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) gum = 'new';
+  else if (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia) gum = 'old';
+  if (!gum) return;
+  var v = document.createElement('video');
+  v.className = 'cam-vid ' + Live.cam.mode;
+  v.setAttribute('autoplay', 'autoplay');
+  v.setAttribute('playsinline', 'playsinline');
+  v.muted = true;
+  $('liveStage').appendChild(v);
+  Live.cam.el = v;
+  function ok(stream) {
+    Live.cam.stream = stream;
+    try { v.srcObject = stream; } catch (e) { try { v.src = (window.URL || window.webkitURL).createObjectURL(stream); } catch (e2) {} }
+    try { v.play(); } catch (e) {}
+    Live.cam.on = true;
+    if (Live.cam.mode === 'full' && document.body.className.indexOf('cam-on') < 0) document.body.className += ' cam-on';
+    Live.showRec(true);
+  }
+  function fail() { Live.stopCam(); }
+  try {
+    if (gum === 'new') navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(ok)['catch'](fail);
+    else (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia).call(navigator, { video: true, audio: false }, ok, fail);
+  } catch (e) { fail(); }
+};
+
+Live.stopCam = function () {
+  Live.cam.on = false;
+  Live.showRec(false);
+  if (Live.nativeCam()) { try { window.Android.stopCamera(); } catch (e) {} }
+  if (Live.cam.stream) {
+    try {
+      var tr = Live.cam.stream.getTracks ? Live.cam.stream.getTracks() : [];
+      for (var i = 0; i < tr.length; i++) tr[i].stop();
+      if (!tr.length && Live.cam.stream.stop) Live.cam.stream.stop();
+    } catch (e) {}
+  }
+  Live.cam.stream = null;
+  if (Live.cam.el && Live.cam.el.parentNode) Live.cam.el.parentNode.removeChild(Live.cam.el);
+  Live.cam.el = null;
+  document.body.className = document.body.className.replace(/\s*cam-on/g, '');
+};
+
+Live.flipCam = function () {
+  if (!Live.cam.on) { toast('اول دوربین رو روشن کن 🎥'); return; }
+  Live.cam.facing = (Live.cam.facing === 'front') ? 'back' : 'front';
+  if (Live.nativeCam()) { try { window.Android.switchCamera(); } catch (e) {} }
+  else { var m = Live.cam.mode; Live.stopCam(); Live.startCam(m); }
+  toast(Live.cam.facing === 'front' ? '🤳 دوربین جلو' : '📷 دوربین عقب');
+};
+
+Live.toggleCam = function () {
+  if (Live.cam.on) { Live.stopCam(); toast('📷 دوربین خاموش شد'); }
+  else { Live.startCam(Live.mine ? 'full' : 'pip'); toast('🎥 دوربین روشن شد'); }
+};
+
+Live.showRec = function (on) {
+  var st = $('liveStage'), d = $('recDot');
+  if (on) {
+    if (!d) { d = elc('div', 'rec-dot', '● REC'); d.id = 'recDot'; st.appendChild(d); }
+    var t = $('camTag');
+    if (!t && Live.cam.mode === 'pip' && !Live.nativeCam()) { t = elc('div', 'cam-tag', 'شما'); t.id = 'camTag'; st.appendChild(t); }
+  } else {
+    if (d && d.parentNode) d.parentNode.removeChild(d);
+    var t2 = $('camTag'); if (t2 && t2.parentNode) t2.parentNode.removeChild(t2);
+  }
+};
+
 Live.init = function () {
   on($('lhClose'), 'click', function () { Live.end(); });
   on($('liveSend'), 'click', function () { Live.sendComment(); });
@@ -221,6 +314,8 @@ Live.init = function () {
     $('lhFollow').className = Live.followed ? 'lh-follow on' : 'lh-follow';
     if (Live.followed) { toast('حالا ' + Live.cur.short + ' رو دنبال می‌کنی ✅'); Snd.ok(); }
   });
+  on($('liveCam'), 'click', function () { Snd.tap(); Live.toggleCam(); });
+  on($('liveFlip'), 'click', function () { Snd.tap(); Live.flipCam(); });
   on($('liveGift'), 'click', function () {
     var pan = $('giftPan'), i, g, e;
     if (pan.className.indexOf('hidden') < 0) { hide(pan); return; }

@@ -1,0 +1,3183 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="format-detection" content="telephone=no">
+<title>ستاره لایو</title>
+<style>
+/* ستاره لایو - CSS سازگار با اندروید 4.4 (بدون متغیر CSS، بدون grid، بدون gap) */
+* { -webkit-box-sizing: border-box; box-sizing: border-box; -webkit-tap-highlight-color: rgba(0,0,0,0); }
+html, body {
+  margin: 0; padding: 0; height: 100%; width: 100%;
+  overflow: hidden; position: fixed;
+  font-family: "Droid Arabic Naskh", "Iranian Sans", Tahoma, sans-serif;
+  font-size: 15px; -webkit-user-select: none; user-select: none;
+}
+body.theme-dark { background: #0d0f16; color: #eef1f7; }
+body.theme-light { background: #f2f4f9; color: #1a1c22; }
+.hidden { display: none !important; }
+button, input, select { font-family: inherit; font-size: 15px; outline: none; }
+button { border: 0; background: none; color: inherit; cursor: pointer; }
+.pad60 { height: 78px; }
+
+/* ---------- SPLASH ---------- */
+.splash {
+  position: fixed; z-index: 500; top: 0; left: 0; right: 0; bottom: 0;
+  background: #10121c;
+  background: -webkit-linear-gradient(top, #1b1040, #0d0f16);
+  text-align: center; padding-top: 16%;
+}
+.splash-logo { font-size: 68px; color: #ffd24a; line-height: 1; }
+.splash-title { font-size: 30px; font-weight: bold; margin-top: 12px; color: #fff; }
+.splash-sub { color: #9aa3bd; margin-top: 6px; font-size: 14px; }
+.splash-bar { width: 60%; height: 6px; margin: 26px auto 0; background: #262a3d; border-radius: 6px; overflow: hidden; }
+.splash-bar i { display: block; height: 100%; width: 0; background: #ffd24a; }
+
+/* ---------- LOCK ---------- */
+.lock-screen { text-align: center; padding-top: 8%; z-index: 400; position: fixed; top:0;left:0;right:0;bottom:0; background: #0d0f16; }
+body.theme-light .lock-screen { background: #f2f4f9; }
+.lock-clock { font-size: 52px; font-weight: bold; }
+.lock-date { color: #8a93ad; margin-top: 4px; }
+.lock-hint { margin-top: 22px; color: #8a93ad; font-size: 14px; }
+.lock-skip { margin-top: 18px; color: #6d78ff; font-size: 14px; text-decoration: underline; }
+
+/* ---------- FINGERPRINT ---------- */
+.fp-pad {
+  position: relative; width: 130px; height: 130px; margin: 18px auto;
+  border-radius: 50%; background: #171b28; border: 2px solid #2b3145; overflow: hidden;
+}
+.fp-pad.big { width: 168px; height: 168px; }
+body.theme-light .fp-pad { background: #e7ebf5; border-color: #c3cade; }
+.fp-pad .fp-icon { font-size: 62px; line-height: 130px; }
+.fp-pad.big .fp-icon { line-height: 168px; font-size: 78px; }
+.fp-pad .fp-ring { position: absolute; top: 4px; left: 4px; right: 4px; bottom: 4px; border-radius: 50%; border: 3px solid rgba(109,120,255,.25); }
+.fp-pad.on .fp-ring { border-color: #6d78ff; }
+.fp-scan {
+  position: absolute; left: 0; right: 0; height: 4px; top: -10px;
+  background: #6d78ff; opacity: 0; box-shadow: 0 0 12px #6d78ff;
+}
+.fp-pad.on .fp-scan { opacity: 1; -webkit-animation: scanmove 1.1s linear infinite; animation: scanmove 1.1s linear infinite; }
+@-webkit-keyframes scanmove { 0% { top: 4px; } 100% { top: 92%; } }
+@keyframes scanmove { 0% { top: 4px; } 100% { top: 92%; } }
+.fp-pct { position: absolute; bottom: 8px; left: 0; right: 0; font-size: 15px; color: #6d78ff; font-weight: bold; }
+
+/* ---------- APP SHELL ---------- */
+.app { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
+.screen { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+.scroll { position: absolute; top: 58px; left: 0; right: 0; bottom: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 10px; }
+
+.topbar {
+  height: 58px; padding: 0 12px; display: -webkit-box; display: flex;
+  -webkit-box-align: center; align-items: center;
+  background: #141826; border-bottom: 1px solid #232838;
+}
+body.theme-light .topbar { background: #fff; border-bottom-color: #e2e6f0; }
+.topbar-t { -webkit-box-flex: 1; flex: 1; }
+.tb-title { font-size: 18px; font-weight: bold; }
+.tb-sub { font-size: 12px; color: #8a93ad; margin-top: 2px; }
+.tb-clock { font-size: 19px; font-weight: bold; color: #ffd24a; }
+.live-dot { background: #ff2d55; color: #fff; padding: 3px 9px; border-radius: 5px; font-size: 12px; font-weight: bold; }
+
+.sec-title { font-size: 14px; color: #8a93ad; margin: 14px 4px 8px; font-weight: bold; }
+
+/* ---------- CARDS / GRID ---------- */
+.card { background: #171b28; border: 1px solid #232838; border-radius: 12px; padding: 12px; }
+body.theme-light .card { background: #fff; border-color: #e2e6f0; }
+.grid { overflow: hidden; }
+.gcell {
+  float: right; width: 33.33%; padding: 5px;
+}
+.gcell-in {
+  border-radius: 12px; padding: 12px 6px; text-align: center;
+  background: #171b28; border: 1px solid #232838; height: 96px;
+}
+body.theme-light .gcell-in { background: #fff; border-color: #e2e6f0; }
+.gcell-in:active { background: #232838; }
+.gcell-ico { font-size: 30px; line-height: 36px; }
+.gcell-t { font-size: 12.5px; margin-top: 4px; }
+.gcell-s { font-size: 10.5px; color: #8a93ad; margin-top: 2px; }
+
+.hero {
+  margin-top: 12px; border-radius: 14px; padding: 12px;
+  background: -webkit-linear-gradient(right, #2b1a5e, #16203f);
+  display: -webkit-box; display: flex; -webkit-box-align: center; align-items: center;
+}
+.hero-ava { width: 52px; height: 52px; border-radius: 50%; background: #ffd24a; color: #222; font-weight: bold; text-align: center; line-height: 52px; font-size: 18px; }
+.hero-txt { -webkit-box-flex: 1; flex: 1; padding: 0 10px; color: #fff; }
+.hero-name { font-weight: bold; font-size: 15px; }
+.hero-line { font-size: 12px; color: #b9c1e0; margin-top: 3px; }
+.hero-btns { text-align: center; }
+.vbadge { color: #3ea6ff; font-size: 12px; }
+
+.mini-btn { background: #262c40; color: #fff; padding: 7px 12px; border-radius: 8px; font-size: 13px; margin: 2px; display: inline-block; }
+.mini-btn.green { background: #17a55f; }
+.mini-btn:active { opacity: .7; }
+body.theme-light .mini-btn { background: #e5e9f4; color: #222; }
+body.theme-light .mini-btn.green { background: #17a55f; color: #fff; }
+.big-btn { display: block; width: 100%; background: #6d78ff; color: #fff; padding: 13px; border-radius: 10px; font-size: 16px; font-weight: bold; margin-top: 12px; }
+.big-btn.danger { background: #b3283f; }
+.big-btn:active { opacity: .8; }
+
+.stat-row { overflow: hidden; }
+.stat { float: right; width: 33.33%; padding: 4px; }
+.stat-in { background: #171b28; border: 1px solid #232838; border-radius: 10px; padding: 9px 4px; text-align: center; }
+body.theme-light .stat-in { background: #fff; border-color: #e2e6f0; }
+.stat-v { font-size: 17px; font-weight: bold; color: #ffd24a; }
+.stat-l { font-size: 11px; color: #8a93ad; margin-top: 2px; }
+
+.list-box { }
+.row {
+  background: #171b28; border: 1px solid #232838; border-radius: 12px; padding: 10px;
+  margin-bottom: 8px; display: -webkit-box; display: flex; -webkit-box-align: center; align-items: center;
+}
+body.theme-light .row { background: #fff; border-color: #e2e6f0; }
+.row:active { background: #1e2434; }
+.row-ava { width: 46px; height: 46px; border-radius: 50%; text-align: center; line-height: 46px; font-size: 17px; font-weight: bold; color: #fff; }
+.row-mid { -webkit-box-flex: 1; flex: 1; padding: 0 9px; overflow: hidden; }
+.row-t { font-size: 14.5px; font-weight: bold; }
+.row-s { font-size: 12px; color: #8a93ad; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-e { text-align: center; font-size: 11px; color: #8a93ad; }
+.badge { background: #ff2d55; color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 11px; display: inline-block; }
+.empty { text-align: center; color: #767f99; font-size: 13px; padding: 18px 0; }
+
+.chip-row { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+.chip { display: inline-block; background: #262c40; border-radius: 20px; padding: 8px 13px; margin-left: 7px; font-size: 13px; }
+body.theme-light .chip { background: #e5e9f4; }
+.chip:active { background: #6d78ff; color: #fff; }
+
+/* ---------- CHAT ROOM ---------- */
+.room-top {
+  height: 58px; display: -webkit-box; display: flex; -webkit-box-align: center; align-items: center;
+  padding: 0 6px; background: #141826; border-bottom: 1px solid #232838;
+}
+body.theme-light .room-top { background: #fff; border-bottom-color: #e2e6f0; }
+.ico-btn { width: 40px; height: 40px; font-size: 20px; border-radius: 50%; text-align: center; }
+.ico-btn:active { background: #262c40; }
+#roomBack, #scanBack, #starBack { font-size: 30px; line-height: 1; }
+.room-ava { width: 40px; height: 40px; border-radius: 50%; text-align: center; line-height: 40px; font-weight: bold; color: #fff; font-size: 15px; }
+.room-info { -webkit-box-flex: 1; flex: 1; padding: 0 8px; overflow: hidden; }
+.room-name { font-size: 15px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-state { font-size: 11.5px; color: #34c759; margin-top: 2px; }
+
+.msgs { position: absolute; top: 58px; bottom: 104px; left: 0; right: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px; }
+.mrow { overflow: hidden; margin-bottom: 8px; }
+.bub { max-width: 78%; padding: 8px 11px; border-radius: 14px; font-size: 14.5px; line-height: 1.6; word-wrap: break-word; }
+.bub.them { float: right; background: #1e2434; border-top-right-radius: 4px; }
+.bub.me { float: left; background: #3b45c9; color: #fff; border-top-left-radius: 4px; }
+body.theme-light .bub.them { background: #e8ecf6; }
+.bub .t { display: block; font-size: 10px; color: #97a0bb; margin-top: 3px; }
+.bub.me .t { color: #c9cdf5; }
+.bub.stk { background: none !important; font-size: 52px; padding: 0; }
+.bub.voice { min-width: 130px; }
+.vwave { display: inline-block; width: 96px; height: 16px; background: -webkit-linear-gradient(left, #8d95ff 12%, transparent 12%); background-size: 8px 100%; vertical-align: middle; }
+.typing { float: right; background: #1e2434; padding: 9px 14px; border-radius: 14px; font-size: 18px; letter-spacing: 3px; }
+.day-sep { text-align: center; font-size: 11px; color: #7b849e; margin: 8px 0; }
+
+.quick-bar { position: absolute; bottom: 56px; left: 0; right: 0; height: 48px; overflow-x: auto; white-space: nowrap; padding: 6px 8px; background: #10131e; border-top: 1px solid #232838; }
+body.theme-light .quick-bar { background: #eef1f8; border-top-color: #e2e6f0; }
+.qchip { display: inline-block; background: #262c40; border-radius: 18px; padding: 7px 12px; margin-left: 6px; font-size: 13px; }
+body.theme-light .qchip { background: #fff; }
+.qchip:active { background: #6d78ff; color: #fff; }
+
+.composer {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 56px;
+  display: -webkit-box; display: flex; -webkit-box-align: center; align-items: center;
+  padding: 0 6px; background: #141826; border-top: 1px solid #232838;
+}
+body.theme-light .composer { background: #fff; border-top-color: #e2e6f0; }
+.composer input { -webkit-box-flex: 1; flex: 1; height: 40px; border-radius: 20px; border: 1px solid #2b3145; background: #1c2130; color: inherit; padding: 0 12px; }
+body.theme-light .composer input { background: #f2f4f9; border-color: #dde2ee; }
+.send-btn { width: 42px; height: 42px; border-radius: 50%; background: #6d78ff; color: #fff; font-size: 18px; }
+.sticker-pan { position: absolute; bottom: 56px; left: 0; right: 0; height: 168px; background: #141826; border-top: 1px solid #232838; overflow-y: auto; padding: 6px; }
+body.theme-light .sticker-pan { background: #fff; }
+.stk-i { float: right; width: 16.6%; text-align: center; font-size: 34px; padding: 6px 0; }
+
+/* ---------- LIVE ---------- */
+.story-row { overflow-x: auto; white-space: nowrap; padding-bottom: 6px; }
+.story { display: inline-block; width: 76px; text-align: center; margin-left: 6px; vertical-align: top; }
+.story-c { width: 62px; height: 62px; border-radius: 50%; margin: 0 auto; padding: 3px; background: -webkit-linear-gradient(top left, #ffb02e, #ff2d55, #a832ff); }
+.story-in { width: 100%; height: 100%; border-radius: 50%; background: #171b28; text-align: center; line-height: 56px; font-size: 22px; }
+.story-n { font-size: 11px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.live-list { overflow: hidden; }
+.lcard { float: right; width: 50%; padding: 5px; }
+.lcard-in { border-radius: 12px; overflow: hidden; height: 140px; position: relative; background: -webkit-linear-gradient(top, #3a2a7a, #131a33); padding: 8px; }
+.lcard-live { position: absolute; top: 8px; right: 8px; background: #ff2d55; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+.lcard-eye { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,.45); color: #fff; font-size: 10.5px; padding: 2px 6px; border-radius: 4px; }
+.lcard-ava { position: absolute; bottom: 34px; right: 10px; width: 44px; height: 44px; border-radius: 50%; text-align: center; line-height: 44px; color: #fff; font-weight: bold; }
+.lcard-n { position: absolute; bottom: 12px; right: 10px; left: 10px; color: #fff; font-size: 12.5px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.live-stage { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; background: #06070c; }
+.live-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: -webkit-linear-gradient(top, #2b1a5e, #0a1030 60%, #06070c); }
+.live-host { position: absolute; top: 22%; left: 50%; margin-left: -55px; width: 110px; height: 110px; border-radius: 50%; text-align: center; line-height: 110px; font-size: 40px; font-weight: bold; color: #fff; background: #6d78ff; box-shadow: 0 0 40px rgba(109,120,255,.6); }
+.live-say { position: absolute; top: 46%; left: 8%; right: 8%; text-align: center; color: #fff; font-size: 16px; line-height: 1.7; text-shadow: 0 1px 4px #000; }
+.live-head { position: absolute; top: 8px; right: 8px; left: 8px; height: 44px; display: -webkit-box; display: flex; -webkit-box-align: center; align-items: center; background: rgba(0,0,0,.35); border-radius: 22px; padding: 0 8px; }
+.lh-ava { width: 32px; height: 32px; border-radius: 50%; text-align: center; line-height: 32px; color: #fff; font-size: 13px; font-weight: bold; background: #ff2d55; }
+.lh-name { color: #fff; font-size: 13px; font-weight: bold; padding: 0 7px; -webkit-box-flex: 1; flex: 1; white-space: nowrap; overflow: hidden; }
+.lh-follow { background: #ff2d55; color: #fff; font-size: 12px; padding: 5px 10px; border-radius: 14px; }
+.lh-follow.on { background: #444b63; }
+.lh-viewers { color: #fff; font-size: 12px; padding: 0 8px; }
+.lh-close { color: #fff; font-size: 20px; width: 30px; }
+.live-tag { position: absolute; top: 58px; right: 12px; background: #ff2d55; color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 5px; }
+.joins { position: absolute; top: 58px; left: 12px; text-align: left; }
+.join-i { color: #ffd24a; font-size: 11.5px; background: rgba(0,0,0,.3); padding: 2px 7px; border-radius: 10px; margin-bottom: 4px; }
+.comments { position: absolute; bottom: 58px; right: 8px; width: 74%; }
+.cmt { color: #fff; font-size: 13px; margin-bottom: 5px; line-height: 1.5; }
+.cmt b { color: #ffd24a; font-size: 12px; }
+.cmt.mine b { color: #7ef0a2; }
+.cmt.host { background: rgba(109,120,255,.35); border-radius: 10px; padding: 4px 8px; }
+.live-bottom { position: absolute; bottom: 0; left: 0; right: 0; height: 54px; display: -webkit-box; display: flex; -webkit-box-align: center; align-items: center; padding: 0 6px; background: rgba(0,0,0,.4); }
+.live-bottom input { -webkit-box-flex: 1; flex: 1; height: 38px; border-radius: 19px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: #fff; padding: 0 12px; }
+.live-bottom .ico-btn { color: #fff; }
+.hearts { position: absolute; bottom: 60px; left: 6px; width: 60px; height: 60%; }
+.hrt { position: absolute; bottom: 0; font-size: 22px; }
+.gift-fly { position: absolute; bottom: 30%; left: 0; right: 0; text-align: center; font-size: 60px; }
+.gift-pan { position: absolute; bottom: 54px; left: 0; right: 0; background: rgba(10,12,20,.95); padding: 8px; }
+.gift-i { float: right; width: 25%; text-align: center; padding: 8px 0; color: #fff; }
+.gift-e { font-size: 32px; }
+.gift-n { font-size: 11px; color: #b9c1e0; }
+
+/* ---------- MIRROR / SCAN ---------- */
+.scan-wrap { text-align: center; padding-top: 8px; }
+.scan-form { text-align: right; }
+.scan-form input, .scan-form select, .card.form input, .card.form select {
+  width: 100%; height: 42px; border-radius: 10px; border: 1px solid #2b3145;
+  background: #1c2130; color: inherit; padding: 0 10px; margin-bottom: 8px;
+}
+body.theme-light .scan-form input, body.theme-light .scan-form select,
+body.theme-light .card.form input, body.theme-light .card.form select { background: #f2f4f9; border-color: #dde2ee; }
+.card.form label, .scan-form label { display: block; font-size: 12.5px; color: #8a93ad; margin: 8px 2px 5px; }
+.scan-hint { color: #8a93ad; font-size: 13px; margin-top: 6px; }
+.result { text-align: right; margin-top: 14px; background: #171b28; border: 1px solid #2b3145; border-radius: 14px; padding: 14px; }
+body.theme-light .result { background: #fff; border-color: #e2e6f0; }
+.res-h { font-size: 19px; font-weight: bold; color: #ffd24a; text-align: center; margin-bottom: 4px; }
+.res-sub { text-align: center; color: #8a93ad; font-size: 12px; margin-bottom: 12px; }
+.res-line { padding: 7px 0; border-bottom: 1px dashed #2b3145; font-size: 14px; }
+.res-line:last-child { border-bottom: 0; }
+.res-line b { color: #6d78ff; }
+.bar { height: 9px; background: #2b3145; border-radius: 5px; overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: -webkit-linear-gradient(right, #ffd24a, #ff2d55); }
+
+.time-row { display: -webkit-box; display: flex; -webkit-box-align: center; align-items: center; }
+.time-row select { width: 46%; }
+.colon { padding: 0 8px; font-size: 20px; font-weight: bold; }
+.seg { overflow: hidden; border-radius: 10px; border: 1px solid #2b3145; margin-bottom: 6px; }
+.seg-b { float: right; width: 50%; padding: 10px 0; text-align: center; font-size: 13.5px; }
+.seg-b.on { background: #6d78ff; color: #fff; }
+.sw-row { display: -webkit-box; display: flex; -webkit-box-align: center; align-items: center; padding: 10px 2px; border-bottom: 1px solid #232838; font-size: 14px; }
+.sw-row span { -webkit-box-flex: 1; flex: 1; }
+.sw { width: 50px; height: 28px; border-radius: 15px; background: #3a4159; position: relative; }
+.sw:after { content: ""; position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; }
+.sw.on { background: #17a55f; }
+.sw.on:after { right: auto; left: 3px; }
+.emoji-row { overflow: hidden; }
+.emo { float: right; width: 12.5%; text-align: center; font-size: 26px; padding: 5px 0; border-radius: 8px; }
+.emo.on { background: #6d78ff; }
+.about { text-align: center; color: #767f99; font-size: 12px; line-height: 1.9; margin-top: 14px; }
+
+/* ---------- PROFILE ---------- */
+#profScroll { top: 0; }
+.prof-head { display: -webkit-box; display: flex; -webkit-box-align: center; align-items: center; padding: 16px 4px 6px; }
+.prof-ava { width: 78px; height: 78px; border-radius: 50%; background: -webkit-linear-gradient(top left, #ffb02e, #ff2d55); text-align: center; line-height: 78px; font-size: 36px; }
+.prof-stats { -webkit-box-flex: 1; flex: 1; display: -webkit-box; display: flex; }
+.ps { -webkit-box-flex: 1; flex: 1; text-align: center; }
+.ps b { display: block; font-size: 17px; }
+.ps span { font-size: 11.5px; color: #8a93ad; }
+.prof-name { font-weight: bold; font-size: 15px; padding: 0 4px; }
+.prof-bio { font-size: 13px; color: #a7b0c9; padding: 3px 4px 10px; line-height: 1.7; }
+.prof-btns { padding: 0 2px 8px; }
+.hl-row { overflow-x: auto; white-space: nowrap; padding: 6px 0; }
+.post-grid { overflow: hidden; }
+.pcell { float: right; width: 33.33%; padding: 2px; }
+.pcell-in { height: 96px; border-radius: 6px; text-align: center; line-height: 96px; font-size: 34px; }
+
+/* ---------- TABBAR ---------- */
+.tabbar {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 56px;
+  background: #10131e; border-top: 1px solid #232838;
+  display: -webkit-box; display: flex;
+}
+body.theme-light .tabbar { background: #fff; border-top-color: #e2e6f0; }
+.tab { -webkit-box-flex: 1; flex: 1; text-align: center; padding-top: 6px; color: #7b849e; position: relative; }
+.tab i { display: block; font-style: normal; font-size: 20px; line-height: 24px; }
+.tab span { font-size: 10.5px; }
+.tab.on { color: #6d78ff; }
+.tab .tb-badge { position: absolute; top: 3px; left: 22%; background: #ff2d55; color: #fff; font-size: 9.5px; border-radius: 8px; padding: 0 5px; }
+
+/* ---------- CALL SCREEN ---------- */
+.call-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 600; text-align: center; background: #0a0c14; }
+.call-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: -webkit-linear-gradient(top, #16203f, #0a0c14); }
+.call-top { position: relative; margin-top: 26px; color: #9aa3bd; font-size: 14px; }
+.call-ava { position: relative; width: 128px; height: 128px; border-radius: 50%; margin: 22px auto 0; text-align: center; line-height: 128px; font-size: 46px; font-weight: bold; color: #fff; background: #6d78ff; }
+.call-ava.ring { -webkit-animation: pulse 1.4s ease-in-out infinite; animation: pulse 1.4s ease-in-out infinite; }
+@-webkit-keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(109,120,255,.6);} 50% { box-shadow: 0 0 0 22px rgba(109,120,255,0);} }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(109,120,255,.6);} 50% { box-shadow: 0 0 0 22px rgba(109,120,255,0);} }
+.call-name { position: relative; color: #fff; font-size: 25px; font-weight: bold; margin-top: 16px; }
+.call-state { position: relative; color: #9aa3bd; margin-top: 6px; font-size: 14px; }
+.call-sub { position: relative; color: #fff; font-size: 15px; margin: 22px 18px 0; line-height: 1.8; min-height: 50px; }
+.call-actions, .call-actions2 { position: absolute; bottom: 46px; left: 0; right: 0; }
+.cbtn { width: 72px; height: 72px; border-radius: 50%; font-size: 28px; color: #fff; margin: 0 20px; }
+.cbtn.green { background: #17a55f; }
+.cbtn.red { background: #e0284a; }
+.cbtn2 { width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,.15); color: #fff; font-size: 22px; margin: 0 14px; }
+.cbtn2.on { background: #fff; color: #000; }
+
+/* ---------- TOAST / POPUP ---------- */
+.toast { position: fixed; z-index: 700; bottom: 70px; left: 14px; right: 14px; background: rgba(20,24,38,.96); color: #fff; padding: 11px 14px; border-radius: 10px; font-size: 13.5px; text-align: center; border: 1px solid #333a52; }
+.popup { position: fixed; z-index: 720; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.6); }
+.popup-box { position: absolute; top: 50%; left: 16px; right: 16px; margin-top: -90px; background: #171b28; border: 1px solid #2b3145; border-radius: 14px; padding: 16px; }
+body.theme-light .popup-box { background: #fff; border-color: #e2e6f0; }
+.pop-t { font-weight: bold; font-size: 16px; margin-bottom: 8px; }
+.pop-b { font-size: 14px; line-height: 1.8; color: #b6bed6; }
+.pop-a { text-align: left; margin-top: 14px; }
+
+/* ---------- LANDSCAPE (1024x600) ---------- */
+@media (min-width: 800px) and (orientation: landscape) {
+  .gcell { width: 20%; }
+  .lcard { width: 25%; }
+  .pcell-in { height: 130px; }
+  .popup-box { left: 25%; right: 25%; }
+  .live-host { top: 14%; }
+  .comments { width: 50%; }
+}
+
+</style>
+</head>
+<body class="theme-dark">
+
+<!-- ================= SPLASH ================= -->
+<div id="splash" class="splash">
+  <div class="splash-logo">★</div>
+  <div class="splash-title">ستاره لایو</div>
+  <div class="splash-sub">دنیای ستاره‌ها توی جیب تو</div>
+  <div class="splash-bar"><i id="splashBar"></i></div>
+</div>
+
+<!-- ================= LOCK ================= -->
+<div id="lockScreen" class="screen lock-screen hidden">
+  <div class="lock-clock" id="lockClock">۰۰:۰۰</div>
+  <div class="lock-date" id="lockDate"></div>
+  <div class="lock-hint">برای باز کردن، انگشتت رو نگه دار</div>
+  <div class="fp-pad" id="lockFp">
+    <div class="fp-ring"></div>
+    <div class="fp-icon">☝</div>
+    <div class="fp-scan"></div>
+  </div>
+  <div class="lock-skip" id="lockSkip">ورود بدون اثر انگشت</div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" class="app hidden">
+
+  <!-- ---------- HOME ---------- -->
+  <section class="screen" id="screen-home">
+    <div class="topbar">
+      <div class="topbar-t">
+        <div class="tb-title">سلام <span id="homeName">دوست من</span> 👋</div>
+        <div class="tb-sub" id="homeDate">—</div>
+      </div>
+      <div class="tb-clock" id="homeClock">۰۰:۰۰</div>
+    </div>
+
+    <div class="scroll" id="homeScroll">
+      <div class="hero" id="heroCard">
+        <div class="hero-ava" id="heroAva">CR</div>
+        <div class="hero-txt">
+          <div class="hero-name">کریستیانو رونالدو <span class="vbadge">✔</span></div>
+          <div class="hero-line" id="heroLine">آنلاین است • همین الان</div>
+        </div>
+        <div class="hero-btns">
+          <button class="mini-btn" id="heroChat">پیام</button>
+          <button class="mini-btn green" id="heroCall">تماس</button>
+        </div>
+      </div>
+
+      <div class="sec-title">امکانات</div>
+      <div class="grid" id="homeGrid"></div>
+
+      <div class="sec-title">وضعیت امروز</div>
+      <div class="stat-row" id="homeStats"></div>
+
+      <div class="sec-title">تماس‌های زمان‌بندی‌شده</div>
+      <div id="homeAlarms" class="list-box"></div>
+
+      <div class="pad60"></div>
+    </div>
+  </section>
+
+  <!-- ---------- CHAT LIST ---------- -->
+  <section class="screen hidden" id="screen-chats">
+    <div class="topbar">
+      <div class="topbar-t"><div class="tb-title">پیام‌ها</div><div class="tb-sub">دایرکت ستاره‌ها</div></div>
+      <div class="tb-clock" id="chatsUnread"></div>
+    </div>
+    <div class="scroll"><div id="chatList" class="list-box"></div><div class="pad60"></div></div>
+  </section>
+
+  <!-- ---------- CHAT ROOM ---------- -->
+  <section class="screen hidden" id="screen-room">
+    <div class="room-top">
+      <button class="ico-btn" id="roomBack">›</button>
+      <div class="room-ava" id="roomAva">CR</div>
+      <div class="room-info">
+        <div class="room-name" id="roomName">—</div>
+        <div class="room-state" id="roomState">آنلاین</div>
+      </div>
+      <button class="ico-btn" id="roomCall">📞</button>
+      <button class="ico-btn" id="roomVideo">🎥</button>
+      <button class="ico-btn" id="roomMenu">⋮</button>
+    </div>
+    <div class="msgs" id="msgs"></div>
+    <div class="quick-bar" id="quickBar"></div>
+    <div class="composer">
+      <button class="ico-btn" id="btnSticker">😊</button>
+      <input type="text" id="msgInput" placeholder="پیامت رو بنویس..." autocomplete="off">
+      <button class="ico-btn" id="btnVoice">🎤</button>
+      <button class="send-btn" id="btnSend">➤</button>
+    </div>
+    <div class="sticker-pan hidden" id="stickerPan"></div>
+  </section>
+
+  <!-- ---------- LIVE LIST ---------- -->
+  <section class="screen hidden" id="screen-lives">
+    <div class="topbar">
+      <div class="topbar-t"><div class="tb-title">لایوها</div><div class="tb-sub">پخش زنده ستاره‌ها</div></div>
+      <div class="live-dot">LIVE</div>
+    </div>
+    <div class="scroll">
+      <div class="sec-title">استوری‌ها</div>
+      <div class="story-row" id="storyRow"></div>
+      <div class="sec-title">در حال پخش زنده</div>
+      <div id="liveList" class="live-list"></div>
+      <div class="pad60"></div>
+    </div>
+  </section>
+
+  <!-- ---------- LIVE ROOM ---------- -->
+  <section class="screen hidden" id="screen-live">
+    <div class="live-stage" id="liveStage">
+      <div class="live-bg" id="liveBg"></div>
+      <div class="live-host" id="liveHostAva">CR</div>
+      <div class="live-say" id="liveSay"></div>
+
+      <div class="live-head">
+        <div class="lh-ava" id="lhAva">CR</div>
+        <div class="lh-name" id="lhName">—</div>
+        <button class="lh-follow" id="lhFollow">دنبال کردن</button>
+        <div class="lh-viewers" id="lhViewers">۰</div>
+        <button class="lh-close" id="lhClose">✕</button>
+      </div>
+
+      <div class="live-tag" id="liveTag">🔴 زنده</div>
+      <div class="joins" id="liveJoins"></div>
+      <div class="hearts" id="hearts"></div>
+      <div class="gift-fly" id="giftFly"></div>
+      <div class="comments" id="liveComments"></div>
+
+      <div class="live-bottom">
+        <input type="text" id="liveInput" placeholder="کامنت بذار..." autocomplete="off">
+        <button class="ico-btn" id="liveSend">➤</button>
+        <button class="ico-btn" id="liveGift">🎁</button>
+        <button class="ico-btn" id="liveHeart">❤</button>
+      </div>
+      <div class="gift-pan hidden" id="giftPan"></div>
+    </div>
+  </section>
+
+  <!-- ---------- MIRRORS ---------- -->
+  <section class="screen hidden" id="screen-mirror">
+    <div class="topbar">
+      <div class="topbar-t"><div class="tb-title">آینه‌های جادویی</div><div class="tb-sub">با اثر انگشت آینده‌ات رو ببین</div></div>
+    </div>
+    <div class="scroll"><div class="grid" id="mirrorGrid"></div><div class="sec-title">نتیجه‌های قبلی</div><div id="mirrorHistory" class="list-box"></div><div class="pad60"></div></div>
+  </section>
+
+  <!-- ---------- SCANNER ---------- -->
+  <section class="screen hidden" id="screen-scan">
+    <div class="room-top">
+      <button class="ico-btn" id="scanBack">›</button>
+      <div class="room-info"><div class="room-name" id="scanTitle">—</div><div class="room-state" id="scanSub">—</div></div>
+    </div>
+    <div class="scroll">
+      <div class="scan-wrap">
+        <div id="scanForm" class="scan-form"></div>
+        <div class="fp-pad big" id="scanPad">
+          <div class="fp-ring"></div>
+          <div class="fp-icon">☝</div>
+          <div class="fp-scan"></div>
+          <div class="fp-pct" id="scanPct"></div>
+        </div>
+        <div class="scan-hint" id="scanHint">انگشتت رو روی حسگر بذار و نگه دار</div>
+        <div class="result hidden" id="scanResult"></div>
+      </div>
+      <div class="pad60"></div>
+    </div>
+  </section>
+
+  <!-- ---------- LIE DETECTOR ---------- -->
+  <section class="screen hidden" id="screen-lie">
+    <div class="room-top">
+      <button class="ico-btn" id="lieBack">›</button>
+      <div class="room-info"><div class="room-name">🕵️ دروغ‌سنج</div><div class="room-state" id="lieState">حسگرها آماده‌اند</div></div>
+      <button class="ico-btn" id="lieInfo">ⓘ</button>
+    </div>
+    <div class="scroll" id="lieScroll"></div>
+  </section>
+
+  <!-- ---------- CALLS ---------- -->
+  <section class="screen hidden" id="screen-calls">
+    <div class="topbar">
+      <div class="topbar-t"><div class="tb-title">تماس‌ها</div><div class="tb-sub">زنگ بزن یا زمان تعیین کن</div></div>
+    </div>
+    <div class="scroll">
+      <div class="sec-title">تماس فوری</div>
+      <div class="chip-row" id="callQuick"></div>
+      <div class="sec-title">زمان‌بندی تماس</div>
+      <div class="card form" id="callForm">
+        <label>از طرف چه کسی؟</label>
+        <select id="calWho"></select>
+        <label>ساعت تماس</label>
+        <div class="time-row">
+          <select id="calH"></select><span class="colon">:</span><select id="calM"></select>
+        </div>
+        <label>نوع تماس</label>
+        <div class="seg" id="calType">
+          <button class="seg-b on" data-v="voice">صوتی</button>
+          <button class="seg-b" data-v="video">تصویری</button>
+        </div>
+        <label>تکرار</label>
+        <div class="seg" id="calRep">
+          <button class="seg-b on" data-v="once">یک‌بار</button>
+          <button class="seg-b" data-v="daily">هر روز</button>
+        </div>
+        <label>حرفی که بزنه (اختیاری)</label>
+        <input type="text" id="calMsg" placeholder="مثلا: پاشو دیگه تمرین داریم!">
+        <button class="big-btn" id="calSave">ثبت تماس</button>
+      </div>
+      <div class="sec-title">لیست تماس‌های ثبت‌شده</div>
+      <div id="alarmList" class="list-box"></div>
+      <div class="sec-title">تاریخچه تماس</div>
+      <div id="callHistory" class="list-box"></div>
+      <div class="pad60"></div>
+    </div>
+  </section>
+
+  <!-- ---------- PROFILE ---------- -->
+  <section class="screen hidden" id="screen-profile">
+    <div class="scroll" id="profScroll">
+      <div class="prof-head">
+        <div class="prof-ava" id="profAva">😎</div>
+        <div class="prof-stats">
+          <div class="ps"><b id="psPosts">۰</b><span>پست</span></div>
+          <div class="ps" id="psFolBox"><b id="psFol">۰</b><span>دنبال‌کننده</span></div>
+          <div class="ps"><b id="psFing">۰</b><span>دنبال‌شونده</span></div>
+        </div>
+      </div>
+      <div class="prof-name" id="profName">من <span class="vbadge" id="profV">✔</span></div>
+      <div class="prof-bio" id="profBio">—</div>
+      <div class="prof-btns">
+        <button class="mini-btn" id="btnEditProf">ویرایش پروفایل</button>
+        <button class="mini-btn green" id="btnBoost">افزایش فالوور 🚀</button>
+        <button class="mini-btn" id="btnGoLive">لایو من</button>
+      </div>
+      <div class="hl-row" id="hlRow"></div>
+      <div class="post-grid" id="postGrid"></div>
+      <div class="pad60"></div>
+    </div>
+  </section>
+
+  <!-- ---------- STAR PROFILE ---------- -->
+  <section class="screen hidden" id="screen-star">
+    <div class="room-top">
+      <button class="ico-btn" id="starBack">›</button>
+      <div class="room-info"><div class="room-name" id="starTitle">—</div><div class="room-state" id="starSub">—</div></div>
+    </div>
+    <div class="scroll" id="starScroll"></div>
+  </section>
+
+  <!-- ---------- SETTINGS ---------- -->
+  <section class="screen hidden" id="screen-set">
+    <div class="topbar"><div class="topbar-t"><div class="tb-title">تنظیمات</div><div class="tb-sub">شخصی‌سازی برنامه</div></div></div>
+    <div class="scroll">
+      <div class="card form">
+        <label>اسم تو</label>
+        <input type="text" id="setName" placeholder="اسمت رو بنویس">
+        <label>آواتار (ایموجی)</label>
+        <div class="emoji-row" id="setEmoji"></div>
+        <label>بیو پروفایل</label>
+        <input type="text" id="setBio" placeholder="یه چیز باحال بنویس">
+        <label>تعداد فالوور پروفایل</label>
+        <select id="setFol"></select>
+        <div class="sw-row"><span>تم روشن</span><button class="sw" id="swTheme"></button></div>
+        <div class="sw-row"><span>صدا</span><button class="sw on" id="swSound"></button></div>
+        <div class="sw-row"><span>لرزش</span><button class="sw on" id="swVibe"></button></div>
+        <div class="sw-row"><span>جلوه‌ها (روی تبلت ضعیف خاموش کن)</span><button class="sw on" id="swFx"></button></div>
+        <div class="sw-row"><span>قفل اثر انگشت موقع باز شدن</span><button class="sw" id="swLock"></button></div>
+        <div class="sw-row"><span>پیام‌های خودکار ستاره‌ها</span><button class="sw on" id="swPush"></button></div>
+        <button class="big-btn" id="setSave">ذخیره</button>
+        <button class="big-btn danger" id="setReset">پاک کردن همه چیز</button>
+      </div>
+      <div class="about">
+        ستاره لایو • نسخه ۱.۰<br>
+        ساخته‌شده برای Lenovo Tab 2 A7-30HC (اندروید ۴.۴)<br>
+        همه‌ی شخصیت‌ها شبیه‌سازی و سرگرمی هستند و ربطی به افراد واقعی ندارند.
+      </div>
+      <div class="pad60"></div>
+    </div>
+  </section>
+
+  <!-- ---------- TABBAR ---------- -->
+  <nav class="tabbar" id="tabbar">
+    <button class="tab on" data-s="home"><i>🏠</i><span>خانه</span></button>
+    <button class="tab" data-s="chats"><i>💬</i><span>پیام</span></button>
+    <button class="tab" data-s="lives"><i>📡</i><span>لایو</span></button>
+    <button class="tab" data-s="mirror"><i>🔮</i><span>آینه</span></button>
+    <button class="tab" data-s="calls"><i>📞</i><span>تماس</span></button>
+    <button class="tab" data-s="profile"><i>👤</i><span>پروفایل</span></button>
+    <button class="tab" data-s="set"><i>⚙</i><span>تنظیم</span></button>
+  </nav>
+</div>
+
+<!-- ================= INCOMING CALL ================= -->
+<div id="callScreen" class="call-screen hidden">
+  <div class="call-bg" id="callBg"></div>
+  <div class="call-top" id="callKind">تماس ورودی</div>
+  <div class="call-ava" id="callAva">CR</div>
+  <div class="call-name" id="callName">—</div>
+  <div class="call-state" id="callState">در حال زنگ خوردن...</div>
+  <div class="call-sub" id="callSub"></div>
+  <div class="call-actions" id="callActions">
+    <button class="cbtn red" id="callDecline">✕</button>
+    <button class="cbtn green" id="callAccept">📞</button>
+  </div>
+  <div class="call-actions2 hidden" id="callActions2">
+    <button class="cbtn2" id="callMute">🔇</button>
+    <button class="cbtn red" id="callEnd">✕</button>
+    <button class="cbtn2" id="callSpk">🔊</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<div id="popup" class="popup hidden"><div class="popup-box"><div id="popTitle" class="pop-t"></div><div id="popBody" class="pop-b"></div><div class="pop-a"><button id="popOk" class="mini-btn green">باشه</button><button id="popNo" class="mini-btn">بی‌خیال</button></div></div></div>
+
+<script>
+/* core.js — ابزارهای پایه (ES5، سازگار با اندروید 4.4) */
+var App = {};
+
+/* ---------- DOM ---------- */
+function $(id) { return document.getElementById(id); }
+function elc(tag, cls, html) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html !== undefined && html !== null) e.innerHTML = html;
+  return e;
+}
+function show(el) { if (el) el.className = el.className.replace(/\s*hidden/g, ''); }
+function hide(el) { if (el && el.className.indexOf('hidden') < 0) el.className += ' hidden'; }
+function on(el, ev, fn) { if (el) el.addEventListener(ev, fn, false); }
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* ---------- STORAGE (localStorage + پشتیبان SharedPreferences اندروید) ---------- */
+var MEM = {};
+var LS_OK = (function () {
+  try {
+    localStorage.setItem('sl_test', '1');
+    localStorage.removeItem('sl_test');
+    return true;
+  } catch (e) { return false; }
+})();
+function rawGet(k) {
+  if (LS_OK) { try { return localStorage.getItem(k); } catch (e) {} }
+  try { if (window.Android && window.Android.prefGet) { var v = window.Android.prefGet(k); return v === '' ? null : v; } } catch (e) {}
+  return MEM.hasOwnProperty(k) ? MEM[k] : null;
+}
+function rawSet(k, v) {
+  if (LS_OK) { try { localStorage.setItem(k, v); return; } catch (e) {} }
+  try { if (window.Android && window.Android.prefSet) { window.Android.prefSet(k, v); return; } } catch (e) {}
+  MEM[k] = v;
+}
+function rawDel(k) {
+  if (LS_OK) { try { localStorage.removeItem(k); return; } catch (e) {} }
+  try { if (window.Android && window.Android.prefDel) { window.Android.prefDel(k); return; } } catch (e) {}
+  delete MEM[k];
+}
+var Store = {
+  get: function (k, def) {
+    try {
+      var v = rawGet('sl_' + k);
+      if (v === null || v === undefined) return def;
+      return JSON.parse(v);
+    } catch (e) { return def; }
+  },
+  set: function (k, v) {
+    try { rawSet('sl_' + k, JSON.stringify(v)); } catch (e) {}
+  },
+  del: function (k) { rawDel('sl_' + k); },
+  clearAll: function () {
+    var i, ks = [], key;
+    if (LS_OK) {
+      try {
+        for (i = 0; i < localStorage.length; i++) {
+          key = localStorage.key(i);
+          if (key && key.indexOf('sl_') === 0) ks.push(key);
+        }
+        for (i = 0; i < ks.length; i++) localStorage.removeItem(ks[i]);
+      } catch (e) {}
+    }
+    try { if (window.Android && window.Android.prefClear) window.Android.prefClear(); } catch (e) {}
+    MEM = {};
+  }
+};
+
+/* ---------- SETTINGS / STATE ---------- */
+var S = {
+  name: 'دوست من',
+  emoji: '😎',
+  bio: 'اینجا فقط ستاره‌ها میان 🌟',
+  followers: 2400000,
+  following: 312,
+  posts: 87,
+  theme: 'dark',
+  sound: true,
+  vibe: true,
+  fx: true,
+  lock: false,
+  push: true,
+  coins: 1200,
+  verified: true
+};
+function loadSettings() {
+  var s = Store.get('set', null), k;
+  if (s) for (k in s) if (S.hasOwnProperty(k)) S[k] = s[k];
+  document.body.className = (S.theme === 'light') ? 'theme-light' : 'theme-dark';
+}
+function saveSettings() { Store.set('set', S); }
+
+/* ---------- NUMBERS (فارسی) ---------- */
+var FA_D = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+function fa(n) {
+  var s = String(n), o = '', i, c;
+  for (i = 0; i < s.length; i++) {
+    c = s.charAt(i);
+    o += (c >= '0' && c <= '9') ? FA_D[+c] : c;
+  }
+  return o;
+}
+function faNum(n) { /* جداکننده هزارگان */
+  var s = String(Math.round(n)), r = '', c = 0, i;
+  for (i = s.length - 1; i >= 0; i--) {
+    r = s.charAt(i) + r; c++;
+    if (c % 3 === 0 && i > 0) r = ',' + r;
+  }
+  return fa(r);
+}
+function compact(n) {
+  if (n >= 1000000) return fa((Math.round(n / 100000) / 10).toFixed(1)) + ' م';
+  if (n >= 1000) return fa((Math.round(n / 100) / 10).toFixed(1)) + ' ه';
+  return fa(n);
+}
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+function clock(d) { d = d || new Date(); return fa(pad2(d.getHours()) + ':' + pad2(d.getMinutes())); }
+
+/* ---------- تاریخ شمسی ---------- */
+var FA_MONTH = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+var FA_DAY = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'];
+function toJalali(gy, gm, gd) {
+  var g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+  var jy = (gy <= 1600) ? 0 : 979;
+  gy -= (gy <= 1600) ? 621 : 1600;
+  var gy2 = (gm > 2) ? (gy + 1) : gy;
+  var days = (365 * gy) + parseInt((gy2 + 3) / 4, 10) - parseInt((gy2 + 99) / 100, 10) +
+             parseInt((gy2 + 399) / 400, 10) - 80 + gd + g_d_m[gm - 1];
+  jy += 33 * parseInt(days / 12053, 10); days %= 12053;
+  jy += 4 * parseInt(days / 1461, 10); days %= 1461;
+  if (days > 365) { jy += parseInt((days - 1) / 365, 10); days = (days - 1) % 365; }
+  var jm = (days < 186) ? 1 + parseInt(days / 31, 10) : 7 + parseInt((days - 186) / 30, 10);
+  var jd = 1 + ((days < 186) ? (days % 31) : ((days - 186) % 30));
+  return [jy, jm, jd];
+}
+function faDate(d) {
+  d = d || new Date();
+  var j = toJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  return FA_DAY[d.getDay()] + ' ' + fa(j[2]) + ' ' + FA_MONTH[j[1] - 1] + ' ' + fa(j[0]);
+}
+function dayKey(d) { d = d || new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+
+/* ---------- تصادفی و هش ---------- */
+function hashStr(s) {
+  var h = 2166136261, i;
+  s = String(s);
+  for (i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  return h >>> 0;
+}
+function seedRnd(seed) { /* تولیدکننده عدد شبه‌تصادفی پایدار */
+  var x = seed >>> 0;
+  return function () {
+    x ^= x << 13; x >>>= 0;
+    x ^= x >> 17;
+    x ^= x << 5; x >>>= 0;
+    return (x >>> 0) / 4294967296;
+  };
+}
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function pickS(arr, rnd) { return arr[Math.floor(rnd() * arr.length)]; }
+function rint(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+function rintS(a, b, rnd) { return a + Math.floor(rnd() * (b - a + 1)); }
+
+/* ---------- صدا (WebAudio) ---------- */
+var Snd = {
+  ctx: null, ringTimer: null,
+  init: function () {
+    if (this.ctx) return this.ctx;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) this.ctx = new AC();
+    } catch (e) { this.ctx = null; }
+    return this.ctx;
+  },
+  tone: function (freq, dur, type, vol) {
+    if (!S.sound) return;
+    var c = this.init(); if (!c) return;
+    try {
+      var o = c.createOscillator(), g = c.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq;
+      g.gain.value = vol === undefined ? 0.12 : vol;
+      o.connect(g); g.connect(c.destination);
+      var t = c.currentTime;
+      o.start(t);
+      g.gain.setValueAtTime(g.gain.value, t + dur * 0.7);
+      g.gain.linearRampToValueAtTime(0.0001, t + dur);
+      o.stop(t + dur + 0.02);
+    } catch (e) {}
+  },
+  tap: function () { this.tone(660, 0.05, 'sine', 0.05); },
+  pop: function () { this.tone(880, 0.08, 'triangle', 0.07); },
+  msg: function () { this.tone(740, 0.09, 'sine', 0.08); var s = this; setTimeout(function () { s.tone(980, 0.1, 'sine', 0.08); }, 90); },
+  ok: function () { var s = this; s.tone(523, 0.1); setTimeout(function () { s.tone(659, 0.1); }, 100); setTimeout(function () { s.tone(784, 0.16); }, 200); },
+  err: function () { this.tone(180, 0.22, 'sawtooth', 0.08); },
+  scan: function () { this.tone(1200, 0.04, 'square', 0.03); },
+  startRing: function () {
+    var s = this; this.stopRing();
+    function burst() {
+      s.tone(880, 0.28, 'sine', 0.13);
+      setTimeout(function () { s.tone(1100, 0.28, 'sine', 0.13); }, 320);
+      setTimeout(function () { s.tone(880, 0.28, 'sine', 0.13); }, 700);
+    }
+    burst();
+    this.ringTimer = setInterval(burst, 1700);
+  },
+  stopRing: function () { if (this.ringTimer) { clearInterval(this.ringTimer); this.ringTimer = null; } }
+};
+function vibe(ms) {
+  if (!S.vibe) return;
+  try {
+    if (window.Android && window.Android.vibrate) { window.Android.vibrate(ms); return; }
+    if (navigator.vibrate) navigator.vibrate(ms);
+  } catch (e) {}
+}
+
+/* ---------- TOAST / POPUP ---------- */
+var toastT = null;
+function toast(msg, ms) {
+  var t = $('toast'); if (!t) return;
+  t.innerHTML = msg; show(t);
+  if (toastT) clearTimeout(toastT);
+  toastT = setTimeout(function () { hide(t); }, ms || 2200);
+}
+function popup(title, body, onOk, okText, noText) {
+  $('popTitle').innerHTML = title;
+  $('popBody').innerHTML = body;
+  $('popOk').innerHTML = okText || 'باشه';
+  var no = $('popNo');
+  if (noText === false) { hide(no); } else { show(no); no.innerHTML = noText || 'بی‌خیال'; }
+  show($('popup'));
+  $('popOk').onclick = function () { hide($('popup')); if (onOk) onOk(); };
+  no.onclick = function () { hide($('popup')); };
+}
+
+/* ---------- ROUTER ---------- */
+var SCREENS = ['home', 'chats', 'room', 'lives', 'live', 'mirror', 'scan', 'lie', 'calls', 'profile', 'star', 'set'];
+var curScreen = 'home';
+var navStack = [];
+function go(name, noStack) {
+  var i, el;
+  if (!noStack && curScreen !== name) navStack.push(curScreen);
+  for (i = 0; i < SCREENS.length; i++) {
+    el = $('screen-' + SCREENS[i]);
+    if (el) { if (SCREENS[i] === name) show(el); else hide(el); }
+  }
+  curScreen = name;
+  /* تب پایین */
+  var tabs = $('tabbar').getElementsByTagName('button');
+  for (i = 0; i < tabs.length; i++) {
+    tabs[i].className = (tabs[i].getAttribute('data-s') === name) ? 'tab on' : 'tab';
+  }
+  if (name === 'live') hide($('tabbar')); else show($('tabbar'));
+  if (App.onScreen) App.onScreen(name);
+  var sc = $('screen-' + name);
+  if (sc) { var s2 = sc.getElementsByTagName('div'); }
+}
+function goBack() {
+  if (!$('popup').className.match(/hidden/)) { hide($('popup')); return true; }
+  if ($('screen-live') && $('screen-live').className.indexOf('hidden') < 0) { Live.stop(); go('lives', true); return true; }
+  var prev = navStack.pop();
+  if (prev) { go(prev, true); return true; }
+  return false;
+}
+
+/* ---------- رنگ آواتار ---------- */
+var AVA_COLORS = ['#e0284a', '#6d78ff', '#17a55f', '#ff8f1f', '#a832ff', '#0aa5c9', '#d81b8c', '#4a5568'];
+function avaColor(key) { return AVA_COLORS[hashStr(key) % AVA_COLORS.length]; }
+function initials(name) {
+  var p = String(name).split(' ');
+  if (p.length > 1) return p[0].charAt(0) + p[1].charAt(0);
+  return p[0].substr(0, 2);
+}
+
+/* ---------- زمان نسبی ---------- */
+function ago(ts) {
+  var d = (Date.now() - ts) / 1000;
+  if (d < 60) return 'همین الان';
+  if (d < 3600) return fa(Math.floor(d / 60)) + ' دقیقه پیش';
+  if (d < 86400) return fa(Math.floor(d / 3600)) + ' ساعت پیش';
+  return fa(Math.floor(d / 86400)) + ' روز پیش';
+}
+
+/* ---------- پل اندروید ---------- */
+var Bridge = {
+  has: function () { return !!(window.Android && window.Android.scheduleCall); },
+  schedule: function (id, pid, name, at, kind, msg) {
+    try { if (this.has()) window.Android.scheduleCall(id, pid, name, String(at), kind, msg || ''); } catch (e) {}
+  },
+  cancel: function (id) { try { if (window.Android && window.Android.cancelCall) window.Android.cancelCall(id); } catch (e) {} },
+  exit: function () { try { if (window.Android && window.Android.exitApp) window.Android.exitApp(); } catch (e) {} },
+  param: function (k) {
+    var m = new RegExp('[?&]' + k + '=([^&]*)').exec(location.search);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+};
+
+</script>
+<script>
+/* data.js — شخصیت‌ها، بانک پاسخ‌ها و داده‌های ثابت */
+
+var STICKERS = ['😂','😍','🔥','⚽','🏆','👑','💪','🥶','😎','🤝','❤️','💔','🙏','👏','🤣','😴','🤔','😱','🎉','💎','🚀','🌹','🐐','⭐','🎯','🍕','☕','🎮','🎤','💰'];
+
+var GIFTS = [
+  { e: '🌹', n: 'گل رز', c: 10 }, { e: '❤️', n: 'قلب', c: 20 },
+  { e: '🎂', n: 'کیک', c: 50 }, { e: '🦁', n: 'شیر', c: 100 },
+  { e: '👑', n: 'تاج', c: 300 }, { e: '💎', n: 'الماس', c: 500 },
+  { e: '🚀', n: 'موشک', c: 1000 }, { e: '🏆', n: 'جام', c: 2000 }
+];
+
+var FA_NAMES = ['علی','محمد','رضا','امیر','حسین','مهدی','سجاد','پارسا','آرش','کیان','سینا','دانیال','بهزاد','یاسین','ماهان',
+  'زهرا','فاطمه','مریم','سارا','نگین','هستی','ملیکا','آیدا','رها','یلدا','ترنم','پریسا','نیلوفر','باران','ستایش'];
+var NAME_SUF = ['_official','۷۷','۱۳۸۵','_cr7','.gamer','_iran','۲۰۰۹','_khas','_king','','','_fan','.tv','_love','۱۰۰'];
+
+function randUser() {
+  var n = pick(FA_NAMES);
+  return n + pick(NAME_SUF) + (Math.random() < 0.35 ? String(rint(10, 999)) : '');
+}
+
+/* ---------------- بانک عمومی پاسخ ---------------- */
+var BASE = {
+  greet: ['سلام {u} جان! چطوری؟ 😄','سلام سلام! خوشحالم پیام دادی 🙌','به به {u}! چه عجب از این طرفا 😍','سلام رفیق، حالت خوبه؟'],
+  how: ['عالیم، مخصوصاً حالا که تو پیام دادی 😊 تو چطوری؟','خستم ولی راضی‌ام، امروز حسابی کار کردم 💪 تو چه خبر؟','خوبم شکر! تو بگو، روزت چطور بود؟'],
+  good: ['ایول! همینه 😍','خوشحالم که خوبی 🙏','چه خوب، همیشه همینطور بمون ⭐'],
+  bad: ['ای بابا، چی شده؟ برام بگو 🥺','ناراحت نباش، هر شبی صبحی داره 🌅','من کنارتم، بگو ببینم چی اذیتت کرده؟'],
+  love: ['منم دوستت دارم {u} ❤️ تو از بهترین طرفدارامی','لطف داری عزیزم 🙏 انرژی می‌گیرم ازت','قربونت 😍 همین حرفا باعث میشه ادامه بدم'],
+  name: ['اسم من {p} هست 😄 اسم تو {u} درسته؟','من {p}ـم! خوشبختم {u} 🤝'],
+  photo: ['الان یه عکس از تمرین برات می‌فرستم 📸','عکس؟ باشه ولی قول بده جایی نذاری 😁 📷'],
+  meet: ['حتماً یه روز همدیگه رو می‌بینیم 🤝 قول میدم','دوست دارم ببینمت! دفعه بعد که اومدم ایران خبرت می‌کنم ✈️'],
+  call: ['باشه، بهت زنگ می‌زنم 📞 از بخش «تماس» ساعتش رو تنظیم کن','الان دستم بنده، ولی حتماً زنگ می‌زنم 📱'],
+  money: ['پول مهمه ولی آرامش مهم‌تره 💭','هرچی دارم نتیجه‌ی تلاشه، تو هم می‌تونی 💪'],
+  food: ['غذای مورد علاقم مرغ و برنجه 🍗 تو چی؟','قبل بازی سبک می‌خورم، بعدش هرچی بخوای 😄'],
+  joke: ['یه معما: چی هست که هرچی ازش برداری بزرگ‌تر میشه؟ 😄 (چاله!)','می‌دونی چرا توپ ناراحت بود؟ چون همه بهش لگد می‌زدن 😂'],
+  bye: ['فعلاً {u} جان، مواظب خودت باش 👋','خداحافظ! بازم پیام بده ❤️'],
+  thanks: ['خواهش می‌کنم 🙏','قابلی نداشت رفیق 😊'],
+  angry: ['آروم باش رفیق 😅 دعوا نداریم که','بی‌خیال، بیا خوش بگذرونیم 😄'],
+  study: ['درس رو جدی بگیر، ورزش هم کنارش 📚⚽','منم اگه درس خونده بودم الان دکتر بودم 😁 شوخی کردم، تو بخون!'],
+  game: ['بازی خوبه ولی زیاده‌روی نه 🎮','منم فیفا بازی می‌کنم، همیشه با خودم بازی می‌کنم 😎'],
+  music: ['موقع تمرین آهنگ گوش میدم 🎧 تو چی گوش میدی؟','آهنگ انرژی میده به آدم 🎵'],
+  sleep: ['خواب کافی مهم‌ترین بخش موفقیته 😴 حداقل ۸ ساعت','برو بخواب دیگه، فردا روز مهمیه 🌙'],
+  age: ['سن فقط یه عدده 😄','اونقدری هست که تجربه داشته باشم و اونقدری کم که هنوز بجنگم 💪'],
+  weather: ['اینجا هوا خوبه، اونجا چطوره؟ ☀️','هوای شما چطوره؟ اینجا یه‌کم سرده 🥶'],
+  iran: ['ایران رو دوست دارم، مردمش فوق‌العاده‌ان 🇮🇷❤️','طرفدارای ایرانی از باحال‌ترین‌های دنیان 🙌'],
+  ok: ['اوکی 👌','باشه حتماً ✅','آره دقیقاً 💯'],
+  q: ['سؤال خوبیه 🤔 نظر خودت چیه؟','هوم... بذار فکر کنم... به نظرم آره!','راستش مطمئن نیستم، ولی حس می‌کنم درست باشه'],
+  fallback: ['جالبه! بیشتر بگو 👀','اوهوم، ادامه بده می‌شنوم 😊','چه باحال! نمی‌دونستم','آها 😄 خب بعدش چی شد؟','موافقم باهات 💯','بامزه بود 😂 بازم بگو']
+};
+
+var FOLLOWUP = ['راستی تو چیکار می‌کنی این روزا؟','امروز چیکار کردی؟','تو نظرت چیه؟','بازی دیشب رو دیدی؟','چند سالته راستی؟','شهرتون هوا چطوره؟','بگو ببینم غذای مورد علاقت چیه؟'];
+
+/* ---------------- شخصیت‌ها ---------------- */
+var PERSONAS = [
+  {
+    id: 'cr7', name: 'کریستیانو رونالدو', short: 'رونالدو', handle: 'cristiano', emoji: '⚽',
+    color: '#e0284a', followers: 641000000, verified: true,
+    bio: 'فوتبالیست • ۵ بار توپ طلا • SIUUU 🐐',
+    job: 'فوتبالیست حرفه‌ای',
+    quick: ['سلام رونالدو 👋','عاشقتم داداش ❤️','بهترین گلت کدوم بود؟','مسی بهتره یا تو؟','یه جمله انگیزشی بگو 💪','میشه بهم زنگ بزنی؟','SIUUU بگو 😄','رمز موفقیتت چیه؟','امشب بازی داری؟','برام عکس بفرست 📸'],
+    greet: ['سلام {u}! SIUUU 🔥 چطوری قهرمان؟','سلام رفیق! امروز تمرین کردی؟ 💪'],
+    banks: {
+      greet: ['سلام {u}! SIUUU 😎 چه خبر؟','سلام قهرمان! امروز چند تا شوت زدی؟ ⚽'],
+      how: ['عالیم! تازه از باشگاه اومدم، ۶۰۰ تا شنا رفتم 😅💪 تو چطوری؟','خوبم! صبح ۵ بیدار شدم، تمرین، استخر، حالا هم پیام تو 😄'],
+      love: ['منم دوستت دارم {u} 🙏 طرفدارای ایرانی معرکه‌ان','قربونت رفیق ❤️ SIUUU برای تو!'],
+      football: ['فوتبال زندگیه منه ⚽ هر روز باید بهتر از دیروز باشی','توی فوتبال استعداد کافی نیست، باید دیوونه‌وار کار کنی 💪'],
+      messi: ['مسی بازیکن فوق‌العاده‌ایه، رقابت با اون منو بهتر کرد 🤝 ولی من فقط با خودم رقابت می‌کنم','احترام زیادی براش قائلم، ولی بهترین بودن یه انتخاب روزانه‌ست 😎'],
+      goal: ['بهترین گلم؟ اون قیچی برگردون به یوونتوس 😍 خودمم وایسادم تشویق کردم','هر گل مثل بچمه، ولی اون ضربه سر ۲.۹۳ متری یه چیز دیگه بود 🚀'],
+      motivate: ['استعداد بدون تلاش هیچه. یه روز، یه ساعت، یه تمرین بیشتر 💪','اگه یه نفر بهت گفت نمی‌تونی، بهش بگو نگاه کن 🔥','درد امروز، قدرت فرداست. بلند شو {u} 🦁'],
+      siu: ['SIUUUUUU 🔥🔥🔥','SIUUU! 😤⚽'],
+      family: ['خانواده همه چیز منه ❤️ جورجینا و بچه‌ها انرژی منن'],
+      food: ['من فست‌فود نمی‌خورم 🚫🍔 آب، ماهی، مرغ و سبزیجات! نوشابه رو بردار، آب بذار 💧'],
+      workout: ['روزی ۵ تا وعده غذا، ۳ ساعت تمرین، ۸ ساعت خواب 💪 راز همینه'],
+      game: ['بعد بازی گاهی PS می‌زنم 🎮 ولی خواب مهم‌تره'],
+      call: ['حتماً بهت زنگ می‌زنم {u} 📞 ساعتش رو تو بخش تماس تنظیم کن، من سر وقت هستم']
+    },
+    live: { title: 'تمرین امشب + جواب به سوالای شما 🔥', says: ['سلام به همه‌ی ایرانیای عزیز! 🇮🇷','امروز ۳ ساعت تمرین کردم، شما چیکار کردید؟ 💪','یادتون باشه: هیچ‌وقت تسلیم نشید','SIUUUU 🔥','کامنتاتونو می‌خونم، سوال بپرسید','بعد لایو میرم استراحت، فردا بازی داریم ⚽','دمتون گرم که اومدید ❤️'] },
+    callLines: ['الو {u}! رونالدو هستم 😄','چطوری قهرمان؟ گفتم یه زنگ بزنم','پاشو تمرین کن، تنبلی ممنوع 💪','امروز باید بهتر از دیروز باشی','یادت نره: SIUUU!','فعلاً کاری نداری؟ مواظب خودت باش 🤝']
+  },
+  {
+    id: 'messi', name: 'لیونل مسی', short: 'مسی', handle: 'leomessi', emoji: '🐐',
+    color: '#6d78ff', followers: 505000000, verified: true,
+    bio: 'قهرمان جام جهانی ۲۰۲۲ 🏆 • اینترمیامی',
+    job: 'فوتبالیست',
+    quick: ['سلام مسی 👋','جام جهانی چه حسی داشت؟','بهترین گلت؟','رونالدو یا تو؟','یه توصیه بهم بکن'],
+    greet: ['سلام {u}، خوشحالم پیام دادی 🙂'],
+    banks: {
+      greet: ['سلام {u} 🙂 حالت چطوره؟','سلام دوست من، چه خبر؟'],
+      how: ['خوبم ممنون، آرومم 😊 تو چطوری؟'],
+      football: ['فوتبال رو باید با لذت بازی کرد، وگرنه فشار خفه‌ت می‌کنه ⚽'],
+      goal: ['گل به گتافه هنوز خاطره‌انگیزترینه 😍'],
+      messi: ['رونالدو رقیب بزرگی بود، بهش احترام می‌ذارم 🤝'],
+      motivate: ['من هر روز تمرین کردم تا شبیه شانس به نظر بیام 🙂'],
+      family: ['آنتونلا و بچه‌ها دنیای منن ❤️']
+    },
+    live: { title: 'گپ آروم با هوادارا', says: ['سلام به همه 🙂','امروز تمرین سبک داشتیم','جام جهانی بهترین شب زندگیم بود 🏆','ممنون که همیشه هستید ❤️'] },
+    callLines: ['سلام {u}، مسی هستم 🙂','گفتم حالتو بپرسم','مواظب خودت باش، خداحافظ']
+  },
+  {
+    id: 'taremi', name: 'مهدی طارمی', short: 'طارمی', handle: 'mehditaremi9', emoji: '🇮🇷',
+    color: '#17a55f', followers: 6800000, verified: true,
+    bio: 'مهاجم تیم ملی ایران ⚽',
+    job: 'فوتبالیست',
+    quick: ['سلام طارمی 👋','تیم ملی چطوره؟','گل قیچی برگردونت عالی بود!','ایران قهرمان میشه؟'],
+    greet: ['سلام {u} جان، خوبی داداش؟ 🇮🇷'],
+    banks: {
+      greet: ['سلام {u} جان! خوبی داداش؟ 💚'],
+      football: ['برای پیراهن ایران می‌جنگیم 🇮🇷'],
+      iran: ['ایران همیشه توی قلبمه ❤️🇮🇷'],
+      motivate: ['از بوشهر شروع کردم، پس تو هم می‌تونی 💪']
+    },
+    live: { title: 'بعد تمرین تیم ملی 🇮🇷', says: ['سلام به همه‌ی هموطنا 🇮🇷','برای بازی بعدی آماده‌ایم','دعامون کنید ❤️'] },
+    callLines: ['الو {u}! طارمی هستم 😄','ایران‌ رو تنها نذار داداش 🇮🇷']
+  },
+  {
+    id: 'ronaldinho', name: 'رونالدینیو', short: 'دینیو', handle: 'ronaldinho', emoji: '🕺',
+    color: '#ff8f1f', followers: 76000000, verified: true,
+    bio: 'جادوگر فوتبال • همیشه لبخند 😁',
+    job: 'اسطوره فوتبال',
+    quick: ['سلام جادوگر 😁','یه تکنیک یاد بده','خاطره بگو'],
+    greet: ['هی {u}! 😁 چطوری رفیق؟'],
+    banks: {
+      greet: ['هی {u}! 😁 بیا برقصیم!'],
+      football: ['فوتبال یعنی شادی، اگه لبخند نداری چرا بازی می‌کنی؟ 😄'],
+      motivate: ['زندگی کوتاهه، بخند و بازی کن 🎉']
+    },
+    live: { title: 'جشن و موزیک 🎉', says: ['هوووی! 😁','فوتبال یعنی شادی','بیاید بخندیم 🎶'] },
+    callLines: ['هی {u}! دینیو هستم 😁','بخند رفیق، زندگی قشنگه!']
+  },
+  {
+    id: 'coach', name: 'مربی انگیزشی', short: 'مربی', handle: 'coach_star', emoji: '🦁',
+    color: '#a832ff', followers: 1200000, verified: false,
+    bio: 'هر روز یه قدم جلوتر 🦁',
+    job: 'مربی موفقیت',
+    quick: ['امروز حوصله ندارم','چطور انگیزه بگیرم؟','برنامه روزانه بده','یه جمله قوی بگو 🔥'],
+    greet: ['سلام قهرمان! امروز برای چی می‌جنگی؟ 🦁'],
+    banks: {
+      greet: ['سلام قهرمان 🦁 امروز چه کاری کردی که فردات رو بسازه؟'],
+      bad: ['ناراحتی نشونه ضعف نیست. بلند شو، یه لیوان آب بخور، ۱۰ دقیقه راه برو 💪'],
+      motivate: ['قانون ۵ ثانیه: تا ۵ بشمار و شروع کن 🔥','هرکی الان استراحت می‌کنه، فردا حسرت می‌خوره','تو از دیروزت قوی‌تری، فقط باور کن 🦁'],
+      study: ['۲۵ دقیقه درس، ۵ دقیقه استراحت. اسمش پومودوروئه 📚'],
+      sleep: ['ساعت خواب ثابت = مغز قوی 😴']
+    },
+    live: { title: 'کارگاه انگیزه شبانه 🔥', says: ['امشب درباره‌ی عادت‌ها حرف می‌زنیم','هرکی اومده یه ❤️ بفرسته','هدف بدون برنامه فقط آرزوئه 💭'] },
+    callLines: ['سلام قهرمان! وقت بیدار شدنه ⏰','برنامه امروزت چیه؟ بگو بشنوم','یادت باشه: بدون بهانه 🦁']
+  },
+  {
+    id: 'bff', name: 'رفیق فابریک', short: 'رفیق', handle: 'bff_ali', emoji: '😜',
+    color: '#0aa5c9', followers: 4300, verified: false,
+    bio: 'شوخ‌ترین رفیق دنیا 😂',
+    job: 'دانشجو',
+    quick: ['کجایی؟','بریم بیرون؟','یه جوک بگو 😂','حوصلم سر رفته'],
+    greet: ['اوووو کجایی تو؟ 😂'],
+    banks: {
+      greet: ['اوووو {u}! کجایی تو گم شدی؟ 😂'],
+      joke: ['به یارو گفتن چرا کولر روشن کردی؟ گفت گرمم بود. گفتن الان زمستونه! گفت خب خاموشش می‌کنم 😂','معلم: جمله بساز با «چون». شاگرد: چون سؤال سخت بود ننوشتم 😆'],
+      game: ['بیا کالاف بزنیم 🎮 دو نفره'],
+      bad: ['بی‌خیال داداش، بیا بریم بستنی بخوریم 🍦']
+    },
+    live: { title: 'لایو بی‌هدف 😂', says: ['چه خبرا؟','بیاید حرف بزنیم','کی بیداره این وقت شب؟ 😴'] },
+    callLines: ['کجایی تو؟ 😂','بیا بریم بیرون دیگه','گوشیتو چرا جواب نمیدی؟']
+  },
+  {
+    id: 'fortune', name: 'فالگیر بزرگ', short: 'فالگیر', handle: 'baba_fal', emoji: '🔮',
+    color: '#d81b8c', followers: 890000, verified: false,
+    bio: 'آینده رو می‌بینم 🔮 قهوه، حافظ، ستاره‌ها',
+    job: 'فالگیر',
+    quick: ['فالم رو بگیر 🔮','آینده‌م چی میشه؟','عشقم کیه؟','امروز روز خوبیه؟'],
+    greet: ['ستاره‌ها می‌گفتن امشب پیام میدی {u} 🔮'],
+    banks: {
+      greet: ['می‌دونستم میای {u}... فنجون رو برگردون ☕🔮'],
+      q: ['ستاره‌ها میگن... آره، ولی صبر لازمه ⭐','نشونه‌ها مثبتن، اما عجله نکن 🌙'],
+      love: ['یه نفر با حرف «م» بهت فکر می‌کنه 💭'],
+      money: ['یه گشایش مالی نزدیکه، از سمت یه آشنا 💰']
+    },
+    live: { title: 'فال زنده برای همه 🔮', says: ['اسمتون رو کامنت کنید تا فال بگیرم','امشب ماه در برج شماست 🌙','یه خبر خوش تو راهه ⭐'] },
+    callLines: ['سلام {u}... ستاره‌ها گفتن زنگ بزنم 🔮','یه خبر مهم برات دارم...']
+  },
+  {
+    id: 'singer', name: 'ستاره پاپ', short: 'خواننده', handle: 'popstar', emoji: '🎤',
+    color: '#4a5568', followers: 88000000, verified: true,
+    bio: 'تور جهانی ۲۰۲۶ 🎶',
+    job: 'خواننده',
+    quick: ['آهنگ جدید کی میاد؟','عاشق صدات‌ام 🎤','برام بخون'],
+    greet: ['سلاااام {u} 🎶'],
+    banks: {
+      greet: ['سلاااام {u}! امروز چه آهنگی گوش دادی؟ 🎧'],
+      music: ['موسیقی زبون مشترک همه‌ی آدماست 🎵'],
+      love: ['عشق بهترین موضوع برای آهنگ نوشتنه ❤️']
+    },
+    live: { title: 'اجرای زنده آکوستیک 🎸', says: ['امشب یه آهنگ جدید می‌خونم 🎶','اسم آهنگ مورد علاقتون رو بنویسید','دوستون دارم ❤️'] },
+    callLines: ['سلام {u} 🎶 صدام رو می‌شنوی؟','یه آهنگ جدید ساختم، برات می‌خونمش']
+  }
+];
+
+function getPersona(id) {
+  for (var i = 0; i < PERSONAS.length; i++) if (PERSONAS[i].id === id) return PERSONAS[i];
+  return PERSONAS[0];
+}
+
+/* ---------------- تشخیص موضوع پیام ---------------- */
+var INTENTS = [
+  { k: 'siu', w: ['siu','سیو','سیوو','سییو'] },
+  { k: 'greet', w: ['سلام','درود','هی ','های','سلم','علیک','صبح بخیر','شب بخیر','عصر بخیر'] },
+  { k: 'how', w: ['چطوری','خوبی','حالت','چه خبر','چخبر','چه میکنی','خوبين'] },
+  { k: 'love', w: ['دوستت دارم','عاشقت','دوست دارم','عشقم','قربونت','بوس','لاو'] },
+  { k: 'messi', w: ['مسی','رونالدو','بهتره','مقایسه','کی بهتر'] },
+  { k: 'football', w: ['فوتبال','بازی امشب','تیم','باشگاه','لیگ','مربی','استادیوم','توپ'] },
+  { k: 'goal', w: ['گل','هتریک','پنالتی','قیچی','شوت','ضربه'] },
+  { k: 'motivate', w: ['انگیزه','خسته','نمیتونم','نا امید','ناامید','شکست','تلاش','موفقیت','هدف'] },
+  { k: 'family', w: ['خانواده','مامان','بابا','بچه','همسر','زن','جورجینا'] },
+  { k: 'food', w: ['غذا','گشنه','ناهار','شام','پیتزا','رژیم','خوراک'] },
+  { k: 'workout', w: ['تمرین','باشگاه','ورزش','بدنساز','عضله','لاغر','وزن'] },
+  { k: 'money', w: ['پول','ثروت','میلیارد','حقوق','خرید','ماشین','پولدار'] },
+  { k: 'joke', w: ['جوک','بخندون','خنده','شوخی','بامزه'] },
+  { k: 'photo', w: ['عکس','سلفی','تصویر','فیلم بفرست'] },
+  { k: 'call', w: ['زنگ','تماس','تلفن','کال','ویس بده'] },
+  { k: 'meet', w: ['ببینمت','ملاقات','بیای ایران','دیدار','کجایی'] },
+  { k: 'name', w: ['اسمت','نامت','کی هستی','خودتو معرفی'] },
+  { k: 'age', w: ['چند سالته','سنت','متولد'] },
+  { k: 'study', w: ['درس','مدرسه','امتحان','دانشگاه','کنکور','معلم','تکلیف'] },
+  { k: 'game', w: ['بازی کامپیوتر','پلی استیشن','کالاف','فیفا','پابجی','گیم','ps'] },
+  { k: 'music', w: ['آهنگ','موزیک','موسیقی','کنسرت','بخون'] },
+  { k: 'sleep', w: ['خواب','بخوابم','بیدار','شب بخیر','خستم'] },
+  { k: 'weather', w: ['هوا','بارون','برف','گرم','سرد'] },
+  { k: 'iran', w: ['ایران','تهران','ایرانی','فارسی'] },
+  { k: 'bad', w: ['ناراحت','غمگین','گریه','افسرده','بد','دلم گرفته','تنهام'] },
+  { k: 'good', w: ['خوبم','عالیم','خوشحال','باحال','مرسی خوبم'] },
+  { k: 'thanks', w: ['مرسی','ممنون','تشکر','دمت گرم','لطف'] },
+  { k: 'bye', w: ['خداحافظ','بای','فعلا','خدافظ','میرم'] },
+  { k: 'angry', w: ['احمق','خفه','بدم میاد','متنفر','مسخره','عوضی'] },
+  { k: 'ok', w: ['باشه','اوکی','حتما','قبول','آره','بله'] }
+];
+
+function normFa(t) {
+  t = String(t).toLowerCase();
+  t = t.replace(/ي/g, 'ی').replace(/ك/g, 'ک').replace(/ۀ/g, 'ه').replace(/[\u064B-\u0652]/g, '');
+  t = t.replace(/[۰-۹]/g, function (d) { return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); });
+  t = t.replace(/\s+/g, ' ');
+  return t;
+}
+function detectIntent(text) {
+  var t = normFa(text), i, j;
+  for (i = 0; i < INTENTS.length; i++) {
+    for (j = 0; j < INTENTS[i].w.length; j++) {
+      if (t.indexOf(INTENTS[i].w[j]) >= 0) return INTENTS[i].k;
+    }
+  }
+  if (t.indexOf('؟') >= 0 || t.indexOf('?') >= 0 || t.indexOf('چرا') >= 0 || t.indexOf('چطور') >= 0 || t.indexOf('ایا') >= 0 || t.indexOf('آیا') >= 0) return 'q';
+  return 'fallback';
+}
+
+/* ---------------- کامنت‌های لایو ---------------- */
+var LIVE_CMTS = [
+  'سلااااام ❤️','عاشقتم 😍','ایران رو دوست داری؟ 🇮🇷','لطفا جواب بده 🙏','بهترینی 🔥','از ایران 🇮🇷',
+  'اولین بارمه لایوت رو می‌بینم','چقدر خوشتیپی 😎','یه سلام بده به من','چند سالته؟','گل دیشب عالی بود ⚽',
+  'داداش سلام کن به ما','برام دعا کن 🙏','فالو کردم ❤️','SIUUU 🔥','خیلی دوستت دارم','امشب بازی داری؟',
+  'هدیه فرستادم 🎁','کیفیت لایو خوبه؟','صدا قطع و وصل میشه','چرا انقدر دیر لایو میای؟','آفرین 👏',
+  'بهترین بازیکن دنیا 🐐','من از مشهدم ❤️','از تبریز سلام 👋','از شیراز 🌹','از اصفهان اومدم 🕌',
+  'کی موافقه؟ 😂','ایول 😂','عالی بود','منم منم 🙋','لطفا لایک کنید بچه‌ها','۱۰۰ هزار نفر شدیم 🎉'
+];
+var LIVE_JOIN = ['وارد لایو شد','به لایو پیوست','الان اومد'];
+
+/* ---------------- داده‌های آینه‌ها ---------------- */
+var JOBS = [
+  { t: 'پزشک جراح قلب', e: '🩺', d: 'دست‌های آرام و ذهن دقیقی داری؛ زیر فشار بهترین تصمیم‌ها رو می‌گیری.' },
+  { t: 'برنامه‌نویس و مهندس نرم‌افزار', e: '💻', d: 'مغزت منطقی و الگو‌محوره؛ دنیای کد مال توئه.' },
+  { t: 'خلبان', e: '✈️', d: 'عاشق آزادی و ارتفاعی؛ مسئولیت‌پذیری بالایی داری.' },
+  { t: 'بازیکن حرفه‌ای فوتبال', e: '⚽', d: 'انرژی بدنی و روحیه رقابتی بالایی داری.' },
+  { t: 'کارآفرین و صاحب کسب‌وکار', e: '💼', d: 'ریسک‌پذیری و ذهن تجاری داری؛ برای کسی کار نمی‌کنی.' },
+  { t: 'وکیل دادگستری', e: '⚖️', d: 'زبان قوی و منطق محکم داری؛ حق رو ثابت می‌کنی.' },
+  { t: 'کارگردان و فیلم‌ساز', e: '🎬', d: 'دنیا رو قاب‌بندی‌شده می‌بینی؛ خیال قوی داری.' },
+  { t: 'مهندس عمران', e: '🏗', d: 'اهل ساختن و نظمی؛ چیزهای ماندگار می‌سازی.' },
+  { t: 'استاد دانشگاه', e: '📚', d: 'یاد دادن رو دوست داری و صبور هستی.' },
+  { t: 'خواننده و موزیسین', e: '🎤', d: 'حس هنری قوی داری؛ احساست رو با صدا منتقل می‌کنی.' },
+  { t: 'آشپز و صاحب رستوران', e: '👨‍🍳', d: 'ذوق و سلیقه بالایی داری؛ با غذا آدم‌ها رو خوشحال می‌کنی.' },
+  { t: 'روان‌شناس', e: '🧠', d: 'شنونده فوق‌العاده‌ای هستی و آدم‌ها رو خوب می‌فهمی.' },
+  { t: 'طراح گرافیک و هنرمند دیجیتال', e: '🎨', d: 'چشم زیبایی‌شناس داری.' },
+  { t: 'خبرنگار ورزشی', e: '🎙', d: 'کنجکاو و پرحرفی به بهترین شکل ممکن!' },
+  { t: 'مدیر تیم ورزشی', e: '📋', d: 'رهبر ذاتی هستی و آدم‌ها رو خوب هدایت می‌کنی.' },
+  { t: 'دامپزشک', e: '🐾', d: 'قلب مهربونی داری و به حیوان‌ها حس خوبی داری.' },
+  { t: 'یوتیوبر و تولیدکننده محتوا', e: '📹', d: 'دوربین دوستت داره؛ حرف زدن بلدی.' },
+  { t: 'فضانورد', e: '🚀', d: 'رویاهات از این سیاره بزرگ‌ترن!' }
+];
+
+var SPOUSE_M = ['علی','محمد','امیرحسین','رضا','پارسا','سینا','آرش','مهدی','دانیال','یاسین','کیان','بردیا','سهیل','ماهان','آرمین'];
+var SPOUSE_F = ['زهرا','فاطمه','مریم','سارا','نگار','هستی','ملیکا','آیدا','یلدا','باران','نیلوفر','ترنم','پریسا','رها','ستایش'];
+var CITIES = ['تهران','مشهد','اصفهان','شیراز','تبریز','کرج','اهواز','رشت','یزد','کرمان','قم','ارومیه','بندرعباس','ساری','همدان','زاهدان'];
+var TRAITS = ['مهربون و صبور','باحال و شوخ','جدی ولی دلسوز','خیلی خونگرم','آروم و فهمیده','پرانرژی و پرشور','رمانتیک','خانواده‌دوست','باهوش و کتاب‌خون','ورزشکار و منظم','خوش‌سلیقه','سخاوتمند'];
+var MEET_PLACES = ['سر کار','دانشگاه','یه مهمونی','فضای مجازی','سفر','دوستِ مشترک','باشگاه','یه کافه','مدرسه یا کلاس','عروسی فامیل'];
+var HAFEZ = [
+  { v: 'الا یا ایها الساقی ادر کاسا و ناولها<br>که عشق آسان نمود اول ولی افتاد مشکل‌ها', m: 'کاری که شروع کردی اولش راحت به نظر می‌رسید ولی سختی داره؛ ناامید نشو، نتیجه‌اش شیرینه.' },
+  { v: 'رسید مژده که ایام غم نخواهد ماند<br>چنان نماند و چنین نیز هم نخواهد ماند', m: 'روزهای سخت تمام می‌شن. خبر خوشی نزدیکه، فقط چند روز صبر کن.' },
+  { v: 'یوسف گم‌گشته بازآید به کنعان غم مخور<br>کلبه احزان شود روزی گلستان غم مخور', m: 'چیزی یا کسی که از دست دادی برمی‌گرده. دلت رو قرص کن.' },
+  { v: 'دوش وقت سحر از غصه نجاتم دادند<br>واندر آن ظلمت شب آب حیاتم دادند', m: 'گشایشی بعد از یک سختی در راهه؛ کمک از جایی می‌رسه که فکرش رو نمی‌کنی.' },
+  { v: 'مژده ای دل که مسیحا نفسی می‌آید<br>که ز انفاس خوشش بوی کسی می‌آید', m: 'یک نفر تازه وارد زندگیت می‌شه که حالت رو بهتر می‌کنه.' },
+  { v: 'صلاح کار کجا و من خراب کجا<br>ببین تفاوت ره کز کجاست تا به کجا', m: 'با خودت صادق باش؛ راهی که رفتی با چیزی که می‌خوای فرق داره. مسیر رو اصلاح کن.' },
+  { v: 'حافظ از باد خزان در چمن دهر مرنج<br>فکر معقول بفرما گل بی خار کجاست', m: 'هیچ چیزی بی‌مشکل نیست؛ سختی‌های کوچیک رو بپذیر و ادامه بده.' },
+  { v: 'گفتم غم تو دارم گفتا غمت سر آید<br>گفتم که ماه من شو گفتا اگر برآید', m: 'خواسته‌ات شدنیه اما شرط داره؛ تلاشت رو بیشتر کن.' }
+];
+var LUCKY_COLORS = ['آبی','قرمز','سبز','طلایی','بنفش','سفید','مشکی','نارنجی','فیروزه‌ای'];
+var PERSONALITY = [
+  { t: 'رهبر متولد', e: '🦁', d: 'اراده‌ی قوی، تصمیم‌گیر و بی‌ترس. آدم‌ها به‌طور طبیعی دنبالت راه می‌افتن.', s: ['قاطع','جسور','مسئولیت‌پذیر'], w: ['گاهی لجباز'] },
+  { t: 'ذهن تحلیل‌گر', e: '🧩', d: 'همه چیز رو موشکافی می‌کنی و کمتر اشتباه می‌کنی.', s: ['دقیق','منطقی','باهوش'], w: ['زیاد فکر می‌کنی'] },
+  { t: 'روح هنرمند', e: '🎨', d: 'حساس، خلاق و پر از ایده‌های عجیب و قشنگ.', s: ['خلاق','همدل','خاص'], w: ['زودرنج'] },
+  { t: 'قلب مهربان', e: '💚', d: 'اول به بقیه فکر می‌کنی؛ همه دوستت دارن.', s: ['مهربان','وفادار','صبور'], w: ['نه گفتن بلد نیستی'] },
+  { t: 'ماجراجوی بی‌قرار', e: '🏄', d: 'یه جا بند نمی‌شی؛ عاشق تجربه‌های جدیدی.', s: ['شجاع','پرانرژی','اجتماعی'], w: ['بی‌حوصله'] },
+  { t: 'استراتژیست آرام', e: '♟', d: 'کم حرف می‌زنی ولی حرکت‌هات حساب‌شده‌ست.', s: ['آینده‌نگر','خونسرد','باهوش'], w: ['کمی درون‌گرا'] }
+];
+var TALES = [
+  'امروز یه پیام مهم دریافت می‌کنی؛ سریع جواب نده، فکر کن.',
+  'یه نفر که مدت‌هاست ندیدیش، یادت می‌کنه.',
+  'امروز روز خوبی برای شروع یه عادت جدیده.',
+  'یه خرج غیرمنتظره در راهه، دست‌به‌عصا باش.',
+  'یه فرصت کوچیک امروز می‌تونه بعداً بزرگ بشه.',
+  'حرف کسی امروز ناراحتت می‌کنه؛ جدی نگیر.',
+  'انرژیت بالاست، برای کارهای عقب‌افتاده عالیه.',
+  'یه خبر خوش از راه دور می‌رسه.'
+];
+
+</script>
+<script>
+/* chat.js — موتور گفتگو با ستاره‌ها (آفلاین) */
+var Chat = {
+  cur: null,          /* شخصیت فعلی */
+  msgs: [],
+  typing: false,
+  idleT: null,
+  lastUser: 0
+};
+
+Chat.key = function (id) { return 'chat_' + id; };
+Chat.load = function (id) { return Store.get(Chat.key(id), []); };
+Chat.save = function () { if (Chat.cur) Store.set(Chat.key(Chat.cur.id), Chat.msgs.slice(-120)); };
+
+Chat.meta = function () { return Store.get('chatmeta', {}); };
+Chat.setMeta = function (id, last, unreadDelta) {
+  var m = Chat.meta();
+  if (!m[id]) m[id] = { last: '', ts: 0, unread: 0 };
+  if (last !== null) { m[id].last = last; m[id].ts = Date.now(); }
+  if (unreadDelta === -1) m[id].unread = 0;
+  else if (unreadDelta) m[id].unread = (m[id].unread || 0) + unreadDelta;
+  Store.set('chatmeta', m);
+  Chat.updateBadge();
+};
+Chat.totalUnread = function () {
+  var m = Chat.meta(), t = 0, k;
+  for (k in m) if (m.hasOwnProperty(k)) t += (m[k].unread || 0);
+  return t;
+};
+Chat.updateBadge = function () {
+  var n = Chat.totalUnread(), tabs = $('tabbar').getElementsByTagName('button'), i, b;
+  for (i = 0; i < tabs.length; i++) {
+    if (tabs[i].getAttribute('data-s') === 'chats') {
+      b = tabs[i].getElementsByTagName('em')[0];
+      if (!b) { b = document.createElement('em'); b.className = 'tb-badge'; b.style.fontStyle = 'normal'; tabs[i].appendChild(b); }
+      if (n > 0) { b.innerHTML = fa(n); b.style.display = 'block'; } else { b.style.display = 'none'; }
+    }
+  }
+  var cu = $('chatsUnread');
+  if (cu) cu.innerHTML = n > 0 ? '<span class="badge">' + fa(n) + '</span>' : '';
+};
+
+/* ---------- لیست چت‌ها ---------- */
+Chat.renderList = function () {
+  var box = $('chatList'), m = Chat.meta(), i, p, mm, r;
+  box.innerHTML = '';
+  for (i = 0; i < PERSONAS.length; i++) {
+    p = PERSONAS[i];
+    mm = m[p.id] || { last: 'برای شروع گفتگو بزن...', ts: 0, unread: 0 };
+    r = elc('div', 'row');
+    r.innerHTML =
+      '<div class="row-ava" style="background:' + p.color + '">' + p.emoji + '</div>' +
+      '<div class="row-mid"><div class="row-t">' + esc(p.name) + (p.verified ? ' <span class="vbadge">✔</span>' : '') +
+      '</div><div class="row-s">' + esc(mm.last || 'سلام! پیام بده...') + '</div></div>' +
+      '<div class="row-e">' + (mm.ts ? clock(new Date(mm.ts)) : '') +
+      (mm.unread ? '<br><span class="badge">' + fa(mm.unread) + '</span>' : '') + '</div>';
+    (function (pp) { on(r, 'click', function () { Snd.tap(); Chat.open(pp.id); }); })(p);
+    box.appendChild(r);
+  }
+  Chat.updateBadge();
+};
+
+/* ---------- باز کردن اتاق ---------- */
+Chat.open = function (id) {
+  Chat.cur = getPersona(id);
+  Chat.msgs = Chat.load(id);
+  $('roomName').innerHTML = esc(Chat.cur.name) + (Chat.cur.verified ? ' <span class="vbadge">✔</span>' : '');
+  $('roomState').innerHTML = 'آنلاین';
+  var av = $('roomAva');
+  av.innerHTML = Chat.cur.emoji; av.style.background = Chat.cur.color;
+  Chat.setMeta(id, null, -1);
+  Chat.renderMsgs();
+  Chat.renderQuick();
+  go('room');
+  if (Chat.msgs.length === 0) {
+    Chat.pushThem(Chat.cur.greet ? pick(Chat.cur.greet).replace(/\{u\}/g, S.name) : 'سلام!', 800);
+  }
+  Chat.armIdle();
+};
+
+Chat.renderQuick = function () {
+  var q = $('quickBar'), i, c, list = (Chat.cur.quick || []).concat(['بعداً حرف می‌زنیم 👋']);
+  q.innerHTML = '';
+  for (i = 0; i < list.length; i++) {
+    c = elc('span', 'qchip', esc(list[i]));
+    (function (txt) { on(c, 'click', function () { Snd.tap(); Chat.send(txt); }); })(list[i]);
+    q.appendChild(c);
+  }
+};
+
+Chat.bubble = function (m) {
+  var row = elc('div', 'mrow'), cls = 'bub ' + (m.who === 'me' ? 'me' : 'them'), inner;
+  if (m.type === 'stk') cls += ' stk';
+  if (m.type === 'voice') cls += ' voice';
+  if (m.type === 'voice') {
+    inner = '🎙 <span class="vwave"></span> ' + fa(m.sec) + '"<span class="t">' + clock(new Date(m.ts)) + '</span>';
+  } else if (m.type === 'stk') {
+    inner = m.t;
+  } else {
+    inner = esc(m.t).replace(/\n/g, '<br>') + '<span class="t">' + clock(new Date(m.ts)) + (m.who === 'me' ? ' ✓✓' : '') + '</span>';
+  }
+  var b = elc('div', cls, inner);
+  row.appendChild(b);
+  return row;
+};
+
+Chat.renderMsgs = function () {
+  var box = $('msgs'), i;
+  box.innerHTML = '';
+  var start = Math.max(0, Chat.msgs.length - 60);
+  for (i = start; i < Chat.msgs.length; i++) box.appendChild(Chat.bubble(Chat.msgs[i]));
+  Chat.scroll();
+};
+Chat.scroll = function () {
+  var box = $('msgs');
+  setTimeout(function () { box.scrollTop = box.scrollHeight + 400; }, 30);
+};
+
+Chat.add = function (m, silent) {
+  Chat.msgs.push(m);
+  var box = $('msgs');
+  if (curScreen === 'room' && box) { box.appendChild(Chat.bubble(m)); Chat.scroll(); }
+  Chat.save();
+  var preview = m.type === 'stk' ? m.t : (m.type === 'voice' ? '🎙 پیام صوتی' : m.t);
+  Chat.setMeta(Chat.cur.id, (m.who === 'me' ? 'شما: ' : '') + preview, (m.who === 'them' && curScreen !== 'room') ? 1 : 0);
+  if (!silent && m.who === 'them') Snd.msg();
+};
+
+Chat.showTyping = function (state) {
+  var box = $('msgs'), t = $('typingRow');
+  if (state) {
+    $('roomState').innerHTML = 'در حال نوشتن...';
+    if (!t && curScreen === 'room') {
+      t = elc('div', 'mrow'); t.id = 'typingRow';
+      t.innerHTML = '<div class="typing">•••</div>';
+      box.appendChild(t); Chat.scroll();
+    }
+  } else {
+    $('roomState').innerHTML = 'آنلاین';
+    if (t && t.parentNode) t.parentNode.removeChild(t);
+  }
+};
+
+Chat.pushThem = function (text, delay, type) {
+  var p = Chat.cur;
+  Chat.showTyping(true);
+  setTimeout(function () {
+    Chat.showTyping(false);
+    if (!Chat.cur || Chat.cur.id !== p.id) return;
+    if (type === 'stk') Chat.add({ who: 'them', t: text, ts: Date.now(), type: 'stk' });
+    else if (type === 'voice') Chat.add({ who: 'them', t: '', sec: rint(3, 25), ts: Date.now(), type: 'voice' });
+    else Chat.add({ who: 'them', t: text, ts: Date.now(), type: 'txt' });
+  }, delay || (700 + Math.min(2200, String(text).length * 28)));
+};
+
+/* ---------- ساخت پاسخ ---------- */
+Chat.answer = function (userText) {
+  var p = Chat.cur, intent = detectIntent(userText), t = normFa(userText), bank, out;
+
+  /* یادگرفتن اسم کاربر */
+  var mName = t.match(/(?:اسمم|من)\s+([آ-ی]{2,12})\s*(?:هستم|ام|م)?/);
+  if (mName && mName[1] && mName[1].length > 1 && ['خوبم','خستم','بدم','اینجام'].indexOf(mName[1]) < 0) {
+    S.name = mName[1]; saveSettings();
+    return 'چه اسم قشنگی، ' + S.name + ' جان! از این به بعد همینطوری صدات می‌کنم 😊';
+  }
+  if (t.indexOf('چند') >= 0 && t.indexOf('فالوور') >= 0) return 'فالوورهای من ' + compact(p.followers) + ' نفرن، ولی مهم‌ترینشون تویی 😄';
+  if (t.indexOf('ساعت چنده') >= 0) return 'الان ساعت ' + clock() + ' هست ⏰';
+  if (t.indexOf('امروز چندمه') >= 0 || t.indexOf('تاریخ') >= 0) return 'امروز ' + faDate() + ' هست 📅';
+
+  bank = (p.banks && p.banks[intent]) ? p.banks[intent] : BASE[intent];
+  if (!bank) bank = BASE.fallback;
+  out = pick(bank);
+  out = out.replace(/\{u\}/g, S.name).replace(/\{p\}/g, p.short);
+
+  if (intent === 'fallback' && Math.random() < 0.45) out += '\n' + pick(FOLLOWUP);
+  if (intent === 'call') Chat.offerCall = true;
+  return out;
+};
+
+Chat.send = function (text) {
+  if (!text) {
+    text = $('msgInput').value;
+    $('msgInput').value = '';
+  }
+  text = String(text).replace(/^\s+|\s+$/g, '');
+  if (!text) return;
+  Chat.add({ who: 'me', t: text, ts: Date.now(), type: 'txt' });
+  Snd.pop();
+  Chat.lastUser = Date.now();
+  hide($('stickerPan'));
+
+  var ans = Chat.answer(text);
+  Chat.pushThem(ans);
+
+  /* گاهی استیکر یا ویس اضافه می‌فرسته */
+  if (Math.random() < 0.22) {
+    setTimeout(function () { Chat.pushThem(pick(STICKERS), 500, 'stk'); }, 1600);
+  } else if (Math.random() < 0.12) {
+    setTimeout(function () { Chat.pushThem('', 500, 'voice'); }, 1800);
+  }
+  if (Chat.offerCall) {
+    Chat.offerCall = false;
+    setTimeout(function () {
+      if (curScreen === 'room') popup('تماس از ' + Chat.cur.short + '؟', 'می‌خوای همین الان ' + Chat.cur.short + ' بهت زنگ بزنه یا برای ساعت دلخواه تنظیمش کنی؟',
+        function () { Calls.incoming(Chat.cur.id, 'voice', ''); }, 'همین الان زنگ بزنه', 'بعداً');
+    }, 2600);
+  }
+  Chat.armIdle();
+};
+
+Chat.sendSticker = function (s) {
+  Chat.add({ who: 'me', t: s, ts: Date.now(), type: 'stk' });
+  Snd.pop();
+  setTimeout(function () {
+    Chat.pushThem(pick(['😂😂','قشنگ بود 😍','ایول 🔥','همینه 💯', pick(STICKERS)]), 700, Math.random() < 0.5 ? 'stk' : null);
+  }, 400);
+};
+
+/* ---------- پیام خودکار وقتی کاربر ساکته ---------- */
+Chat.armIdle = function () {
+  if (Chat.idleT) clearTimeout(Chat.idleT);
+  if (!S.push) return;
+  Chat.idleT = setTimeout(function () {
+    if (curScreen === 'room' && Chat.cur) {
+      Chat.pushThem(pick(['کجایی؟ 😄','هستی؟','یه چیزی بگو دیگه 😁','رفتی؟ 🥺', pick(FOLLOWUP)]), 600);
+    }
+  }, 35000 + rint(0, 20000));
+};
+
+/* ---------- پیام‌های ناگهانی از ستاره‌ها (کل برنامه) ---------- */
+Chat.randomPing = function () {
+  if (!S.push) return;
+  if (curScreen === 'room' || curScreen === 'live' || Calls.active) return;
+  var p = pick(PERSONAS);
+  var texts = ['سلام {u}، چیکار می‌کنی؟','یه خبر خوب دارم برات 😄','دلم برات تنگ شده بود 😍','امروز حالت چطوره؟','لایو گذاشتم، بیا ببین 📡','یه سوال ازت دارم...'];
+  var txt = pick(texts).replace(/\{u\}/g, S.name);
+  var arr = Chat.load(p.id);
+  arr.push({ who: 'them', t: txt, ts: Date.now(), type: 'txt' });
+  Store.set(Chat.key(p.id), arr.slice(-120));
+  var m = Chat.meta();
+  if (!m[p.id]) m[p.id] = { last: '', ts: 0, unread: 0 };
+  m[p.id].last = txt; m[p.id].ts = Date.now(); m[p.id].unread = (m[p.id].unread || 0) + 1;
+  Store.set('chatmeta', m);
+  Chat.updateBadge();
+  Snd.msg(); vibe(120);
+  toast('💬 پیام جدید از ' + p.short + ': ' + txt);
+  if (curScreen === 'chats') Chat.renderList();
+};
+
+/* ---------- راه‌اندازی ---------- */
+Chat.init = function () {
+  on($('btnSend'), 'click', function () { Chat.send(); });
+  on($('msgInput'), 'keydown', function (e) { if (e.keyCode === 13) { Chat.send(); e.preventDefault(); } });
+  on($('roomBack'), 'click', function () { go('chats', true); Chat.renderList(); });
+  on($('roomCall'), 'click', function () { Calls.incoming(Chat.cur.id, 'voice', ''); });
+  on($('roomVideo'), 'click', function () { Calls.incoming(Chat.cur.id, 'video', ''); });
+  on($('roomMenu'), 'click', function () {
+    popup('گزینه‌ها', 'می‌خوای گفتگو با ' + Chat.cur.short + ' رو پاک کنی؟', function () {
+      Chat.msgs = []; Chat.save(); Chat.renderMsgs(); Chat.setMeta(Chat.cur.id, 'گفتگو پاک شد', 0); toast('پاک شد ✅');
+    }, 'پاک کن', 'بی‌خیال');
+  });
+  on($('btnVoice'), 'click', function () {
+    Chat.add({ who: 'me', t: '', sec: rint(2, 18), ts: Date.now(), type: 'voice' });
+    Snd.pop();
+    setTimeout(function () { Chat.pushThem(pick(['ویس‌ت رو گوش دادم 😄 قشنگ بود','صدات باحاله 😍','آره موافقم 👌','بلند بگو نشنیدم 😁']), 900); }, 700);
+  });
+  on($('btnSticker'), 'click', function () {
+    var pan = $('stickerPan');
+    if (pan.className.indexOf('hidden') >= 0) {
+      if (!pan.innerHTML) {
+        var i, e;
+        for (i = 0; i < STICKERS.length; i++) {
+          e = elc('div', 'stk-i', STICKERS[i]);
+          (function (s) { on(e, 'click', function () { Chat.sendSticker(s); hide(pan); }); })(STICKERS[i]);
+          pan.appendChild(e);
+        }
+      }
+      show(pan);
+    } else hide(pan);
+  });
+  Chat.updateBadge();
+};
+
+</script>
+<script>
+/* call.js — تماس فوری، زمان‌بندی تماس و صفحه تماس */
+var Calls = {
+  active: false,
+  inCall: false,
+  cur: null,
+  kind: 'voice',
+  customMsg: '',
+  timer: null,
+  subT: null,
+  vibT: null,
+  sec: 0,
+  ringT: null
+};
+
+Calls.alarms = function () { return Store.get('alarms', []); };
+Calls.saveAlarms = function (a) { Store.set('alarms', a); };
+Calls.hist = function () { return Store.get('callhist', []); };
+Calls.addHist = function (h) {
+  var a = Calls.hist(); a.unshift(h); Store.set('callhist', a.slice(0, 40));
+};
+
+/* ---------- زمان‌بندی ---------- */
+Calls.nextTime = function (h, m) {
+  var d = new Date();
+  d.setHours(h, m, 0, 0);
+  if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+  return d.getTime();
+};
+Calls.add = function (pid, h, m, kind, msg, repeat) {
+  var a = Calls.alarms();
+  var item = { id: 'a' + Date.now() + rint(10, 99), pid: pid, h: h, m: m, at: Calls.nextTime(h, m), kind: kind, msg: msg, repeat: repeat, done: false };
+  a.push(item); Calls.saveAlarms(a);
+  Bridge.schedule(item.id, pid, getPersona(pid).name, item.at, kind, msg);
+  Calls.renderAlarms();
+  var mins = Math.round((item.at - Date.now()) / 60000);
+  toast('✅ ثبت شد! ' + getPersona(pid).short + ' ساعت ' + fa(pad2(h) + ':' + pad2(m)) + ' زنگ می‌زنه (تا ' + fa(mins) + ' دقیقه دیگه)');
+  Snd.ok();
+};
+Calls.remove = function (id) {
+  var a = Calls.alarms(), i;
+  for (i = 0; i < a.length; i++) if (a[i].id === id) { Bridge.cancel(id); a.splice(i, 1); break; }
+  Calls.saveAlarms(a); Calls.renderAlarms(); App.renderHome();
+};
+Calls.check = function () {
+  var a = Calls.alarms(), now = Date.now(), i, changed = false, fire = null;
+  for (i = 0; i < a.length; i++) {
+    if (!a[i].done && a[i].at <= now && now - a[i].at < 15 * 60000) {
+      fire = a[i];
+      if (a[i].repeat === 'daily') { a[i].at = a[i].at + 86400000; Bridge.schedule(a[i].id, a[i].pid, getPersona(a[i].pid).name, a[i].at, a[i].kind, a[i].msg); }
+      else a[i].done = true;
+      changed = true;
+      break;
+    } else if (!a[i].done && a[i].at < now) {
+      if (a[i].repeat === 'daily') { while (a[i].at < now) a[i].at += 86400000; }
+      else a[i].done = true;
+      changed = true;
+    }
+  }
+  if (changed) Calls.saveAlarms(a);
+  if (fire && !Calls.active) Calls.incoming(fire.pid, fire.kind, fire.msg);
+  if (changed) { Calls.renderAlarms(); App.renderHome(); }
+};
+
+/* ---------- صفحه تماس ---------- */
+Calls.incoming = function (pid, kind, msg) {
+  if (Calls.active) return;
+  var p = getPersona(pid);
+  Calls.active = true; Calls.inCall = false; Calls.cur = p; Calls.kind = kind || 'voice'; Calls.customMsg = msg || '';
+  $('callKind').innerHTML = (Calls.kind === 'video' ? '📹 تماس تصویری ورودی' : '📞 تماس ورودی');
+  var av = $('callAva');
+  av.innerHTML = p.emoji; av.style.background = p.color;
+  av.className = 'call-ava ring';
+  $('callName').innerHTML = esc(p.name);
+  $('callState').innerHTML = 'در حال زنگ خوردن...';
+  $('callSub').innerHTML = '';
+  show($('callActions')); hide($('callActions2'));
+  show($('callScreen'));
+  Snd.startRing();
+  Calls.vibT = setInterval(function () { vibe(500); }, 1600);
+  vibe(500);
+  /* اگر جواب نداد */
+  Calls.ringT = setTimeout(function () {
+    if (Calls.active && !Calls.inCall) {
+      Calls.addHist({ pid: p.id, kind: Calls.kind, status: 'missed', dur: 0, ts: Date.now() });
+      Calls.hangup();
+      toast('📵 تماس بی‌پاسخ از ' + p.short);
+    }
+  }, 32000);
+};
+
+Calls.accept = function () {
+  if (!Calls.active) return;
+  Calls.inCall = true; Calls.sec = 0;
+  Snd.stopRing();
+  if (Calls.vibT) { clearInterval(Calls.vibT); Calls.vibT = null; }
+  if (Calls.ringT) { clearTimeout(Calls.ringT); Calls.ringT = null; }
+  $('callAva').className = 'call-ava';
+  $('callKind').innerHTML = (Calls.kind === 'video' ? '📹 تماس تصویری' : '📞 در حال مکالمه');
+  hide($('callActions')); show($('callActions2'));
+  $('callState').innerHTML = fa('00:00');
+  Calls.timer = setInterval(function () {
+    Calls.sec++;
+    $('callState').innerHTML = fa(pad2(Math.floor(Calls.sec / 60)) + ':' + pad2(Calls.sec % 60));
+  }, 1000);
+
+  var lines = [];
+  if (Calls.customMsg) lines.push(Calls.customMsg);
+  lines = lines.concat(Calls.cur.callLines || ['سلام {u}!']);
+  lines = lines.concat(['راستی حالت چطوره؟', 'کاری نداری؟ برم دیگه', 'مواظب خودت باش، خداحافظ 👋']);
+  var idx = 0;
+  function say() {
+    if (!Calls.inCall) return;
+    if (idx >= lines.length) { Calls.hangupWithLog(); return; }
+    var line = String(lines[idx]).replace(/\{u\}/g, S.name);
+    $('callSub').innerHTML = '«' + esc(line) + '»';
+    Snd.tone(rint(300, 500), 0.12, 'sine', 0.05);
+    idx++;
+    Calls.subT = setTimeout(say, 2600 + line.length * 55);
+  }
+  say();
+};
+
+Calls.hangupWithLog = function () {
+  if (Calls.cur) Calls.addHist({ pid: Calls.cur.id, kind: Calls.kind, status: 'answered', dur: Calls.sec, ts: Date.now() });
+  var s = Calls.sec, name = Calls.cur ? Calls.cur.short : '';
+  Calls.hangup();
+  if (s > 0) toast('تماس با ' + name + ' تموم شد • مدت ' + fa(pad2(Math.floor(s / 60)) + ':' + pad2(s % 60)));
+};
+
+Calls.decline = function () {
+  if (Calls.cur) Calls.addHist({ pid: Calls.cur.id, kind: Calls.kind, status: 'declined', dur: 0, ts: Date.now() });
+  Calls.hangup();
+};
+
+Calls.hangup = function () {
+  Snd.stopRing();
+  if (Calls.vibT) { clearInterval(Calls.vibT); Calls.vibT = null; }
+  if (Calls.timer) { clearInterval(Calls.timer); Calls.timer = null; }
+  if (Calls.subT) { clearTimeout(Calls.subT); Calls.subT = null; }
+  if (Calls.ringT) { clearTimeout(Calls.ringT); Calls.ringT = null; }
+  Calls.active = false; Calls.inCall = false;
+  hide($('callScreen'));
+  Calls.renderHist();
+};
+
+/* ---------- رندر ---------- */
+Calls.renderAlarms = function () {
+  var box = $('alarmList');
+  if (!box) return;
+  var a = Calls.alarms(), i, r, p;
+  box.innerHTML = '';
+  var live = [];
+  for (i = 0; i < a.length; i++) if (!a[i].done) live.push(a[i]);
+  if (!live.length) { box.innerHTML = '<div class="empty">هنوز تماسی زمان‌بندی نکردی</div>'; return; }
+  for (i = 0; i < live.length; i++) {
+    p = getPersona(live[i].pid);
+    r = elc('div', 'row');
+    r.innerHTML = '<div class="row-ava" style="background:' + p.color + '">' + p.emoji + '</div>' +
+      '<div class="row-mid"><div class="row-t">' + esc(p.name) + ' • ' + fa(pad2(live[i].h) + ':' + pad2(live[i].m)) + '</div>' +
+      '<div class="row-s">' + (live[i].kind === 'video' ? '📹 تصویری' : '📞 صوتی') + ' • ' + (live[i].repeat === 'daily' ? 'هر روز' : 'یک‌بار') +
+      (live[i].msg ? ' • «' + esc(live[i].msg) + '»' : '') + '</div></div>' +
+      '<div class="row-e"><span class="mini-btn">حذف</span></div>';
+    (function (id) { on(r.getElementsByTagName('span')[0], 'click', function (e) { e.stopPropagation(); Calls.remove(id); toast('حذف شد'); }); })(live[i].id);
+    box.appendChild(r);
+  }
+};
+
+Calls.renderHist = function () {
+  var box = $('callHistory');
+  if (!box) return;
+  var h = Calls.hist(), i, p, r, st;
+  box.innerHTML = '';
+  if (!h.length) { box.innerHTML = '<div class="empty">تماسی ثبت نشده</div>'; return; }
+  for (i = 0; i < h.length && i < 15; i++) {
+    p = getPersona(h[i].pid);
+    st = h[i].status === 'missed' ? '<span style="color:#e0284a">بی‌پاسخ</span>' :
+         h[i].status === 'declined' ? 'رد شده' : 'مدت ' + fa(pad2(Math.floor(h[i].dur / 60)) + ':' + pad2(h[i].dur % 60));
+    r = elc('div', 'row');
+    r.innerHTML = '<div class="row-ava" style="background:' + p.color + '">' + p.emoji + '</div>' +
+      '<div class="row-mid"><div class="row-t">' + esc(p.name) + '</div><div class="row-s">' + st + ' • ' + ago(h[i].ts) + '</div></div>' +
+      '<div class="row-e">' + (h[i].kind === 'video' ? '📹' : '📞') + '</div>';
+    (function (pid) { on(r, 'click', function () { Calls.incoming(pid, 'voice', ''); }); })(p.id);
+    box.appendChild(r);
+  }
+};
+
+Calls.renderQuick = function () {
+  var box = $('callQuick'), i, c;
+  box.innerHTML = '';
+  for (i = 0; i < PERSONAS.length; i++) {
+    c = elc('span', 'chip', PERSONAS[i].emoji + ' ' + PERSONAS[i].short);
+    (function (pid) {
+      on(c, 'click', function () {
+        Snd.tap();
+        popup('تماس فوری', 'الان ' + getPersona(pid).name + ' بهت زنگ بزنه؟', function () {
+          setTimeout(function () { Calls.incoming(pid, 'voice', ''); }, rint(600, 2500));
+          toast('در حال برقراری تماس...');
+        }, 'آره زنگ بزنه', 'نه');
+      });
+    })(PERSONAS[i].id);
+    box.appendChild(c);
+  }
+};
+
+Calls.init = function () {
+  /* پر کردن فرم */
+  var who = $('calWho'), i, o;
+  for (i = 0; i < PERSONAS.length; i++) {
+    o = document.createElement('option');
+    o.value = PERSONAS[i].id; o.innerHTML = PERSONAS[i].name;
+    who.appendChild(o);
+  }
+  var hs = $('calH'), ms = $('calM'), now = new Date();
+  for (i = 0; i < 24; i++) { o = document.createElement('option'); o.value = i; o.innerHTML = fa(pad2(i)); hs.appendChild(o); }
+  for (i = 0; i < 60; i++) { o = document.createElement('option'); o.value = i; o.innerHTML = fa(pad2(i)); ms.appendChild(o); }
+  hs.value = now.getHours(); ms.value = Math.min(59, now.getMinutes() + 2);
+
+  function segInit(id) {
+    var box = $(id), bs = box.getElementsByTagName('button'), j;
+    for (j = 0; j < bs.length; j++) {
+      (function (b) {
+        on(b, 'click', function () {
+          var k, all = box.getElementsByTagName('button');
+          for (k = 0; k < all.length; k++) all[k].className = 'seg-b';
+          b.className = 'seg-b on'; Snd.tap();
+        });
+      })(bs[j]);
+    }
+  }
+  segInit('calType'); segInit('calRep');
+  function segVal(id) {
+    var bs = $(id).getElementsByTagName('button'), j;
+    for (j = 0; j < bs.length; j++) if (bs[j].className.indexOf('on') >= 0) return bs[j].getAttribute('data-v');
+    return '';
+  }
+
+  on($('calSave'), 'click', function () {
+    Calls.add($('calWho').value, parseInt($('calH').value, 10), parseInt($('calM').value, 10),
+      segVal('calType'), $('calMsg').value, segVal('calRep'));
+    $('calMsg').value = '';
+    App.renderHome();
+  });
+
+  on($('callAccept'), 'click', function () { Calls.accept(); });
+  on($('callDecline'), 'click', function () { Calls.decline(); });
+  on($('callEnd'), 'click', function () { Calls.hangupWithLog(); });
+  on($('callMute'), 'click', function () {
+    var b = $('callMute'); b.className = b.className.indexOf('on') >= 0 ? 'cbtn2' : 'cbtn2 on';
+    toast(b.className.indexOf('on') >= 0 ? 'میکروفون بسته شد 🔇' : 'میکروفون باز شد 🎤');
+  });
+  on($('callSpk'), 'click', function () {
+    var b = $('callSpk'); b.className = b.className.indexOf('on') >= 0 ? 'cbtn2' : 'cbtn2 on';
+    toast(b.className.indexOf('on') >= 0 ? 'بلندگو روشن 🔊' : 'بلندگو خاموش');
+  });
+
+  Calls.renderQuick(); Calls.renderAlarms(); Calls.renderHist();
+  setInterval(Calls.check, 10000);
+  Calls.check();
+};
+
+</script>
+<script>
+/* mirror.js — آینه‌های جادویی با اسکنر اثر انگشت */
+var Mirror = { type: null, busy: false, prog: 0, timer: null, fields: {} };
+
+var MIRRORS = [
+  { id: 'job',      t: 'شغل آینده',      s: 'با اثر انگشت',  e: '💼', color: '#6d78ff' },
+  { id: 'spouse',   t: 'همسر آینده',     s: 'با اثر انگشت',  e: '💍', color: '#d81b8c' },
+  { id: 'marriage', t: 'سن ازدواج',      s: 'با اثر انگشت',  e: '📅', color: '#ff8f1f' },
+  { id: 'wealth',   t: 'ثروت آینده',     s: 'با اثر انگشت',  e: '💰', color: '#17a55f' },
+  { id: 'kids',     t: 'تعداد فرزند',    s: 'با اثر انگشت',  e: '👶', color: '#0aa5c9' },
+  { id: 'person',   t: 'شخصیت‌شناسی',    s: 'با اثر انگشت',  e: '🧠', color: '#a832ff' },
+  { id: 'love',     t: 'درصد عشق',       s: 'دو اسم',        e: '❤️', color: '#e0284a' },
+  { id: 'lie',      t: 'دروغ‌سنج واقعی', s: 'با حسگرها',     e: '🕵️', color: '#e0284a' },
+  { id: 'think',    t: 'کی بهت فکر می‌کنه؟', s: 'با اثر انگشت', e: '💭', color: '#4a5568' },
+  { id: 'daily',    t: 'طالع امروز',     s: 'روزانه',        e: '🌙', color: '#6d78ff' },
+  { id: 'hafez',    t: 'فال حافظ',       s: 'نیت کن',        e: '📖', color: '#17a55f' },
+  { id: 'luck',     t: 'شانس امروز',     s: 'با اثر انگشت',  e: '🍀', color: '#ff8f1f' },
+  { id: 'face',     t: 'چهره ۲۰ سال بعد', s: 'با اثر انگشت', e: '🪞', color: '#0aa5c9' },
+  { id: 'star',     t: 'کدوم ستاره‌ای؟',  s: 'با اثر انگشت',  e: '⭐', color: '#ffd24a' }
+];
+
+Mirror.renderGrid = function () {
+  var g = $('mirrorGrid'), i, c;
+  g.innerHTML = '';
+  for (i = 0; i < MIRRORS.length; i++) {
+    c = elc('div', 'gcell');
+    c.innerHTML = '<div class="gcell-in"><div class="gcell-ico">' + MIRRORS[i].e + '</div>' +
+      '<div class="gcell-t">' + MIRRORS[i].t + '</div><div class="gcell-s">' + MIRRORS[i].s + '</div></div>';
+    (function (m) { on(c, 'click', function () { Snd.tap(); Mirror.open(m.id); }); })(MIRRORS[i]);
+    g.appendChild(c);
+  }
+  Mirror.renderHistory();
+};
+
+Mirror.renderHistory = function () {
+  var box = $('mirrorHistory'), h = Store.get('mirhist', []), i, r;
+  if (!box) return;
+  box.innerHTML = '';
+  if (!h.length) { box.innerHTML = '<div class="empty">هنوز چیزی اسکن نکردی</div>'; return; }
+  for (i = 0; i < h.length && i < 12; i++) {
+    r = elc('div', 'row');
+    r.innerHTML = '<div class="row-ava" style="background:#262c40">' + h[i].e + '</div>' +
+      '<div class="row-mid"><div class="row-t">' + esc(h[i].t) + '</div><div class="row-s">' + esc(h[i].s) + '</div></div>' +
+      '<div class="row-e">' + ago(h[i].ts) + '</div>';
+    box.appendChild(r);
+  }
+};
+Mirror.saveHist = function (e, t, s) {
+  var h = Store.get('mirhist', []);
+  h.unshift({ e: e, t: t, s: s, ts: Date.now() });
+  Store.set('mirhist', h.slice(0, 30));
+};
+
+function mirDef(id) { for (var i = 0; i < MIRRORS.length; i++) if (MIRRORS[i].id === id) return MIRRORS[i]; return MIRRORS[0]; }
+
+Mirror.open = function (id) {
+  if (id === 'lie') { Lie.open(); return; }
+  Mirror.type = id;
+  var d = mirDef(id);
+  $('scanTitle').innerHTML = d.e + ' ' + d.t;
+  $('scanSub').innerHTML = d.s;
+  hide($('scanResult'));
+  $('scanPct').innerHTML = '';
+  $('scanPad').className = 'fp-pad big';
+  $('scanHint').innerHTML = 'انگشتت رو روی حسگر بذار و نگه دار';
+
+  /* فرم ورودی */
+  var f = $('scanForm'), html = '';
+  var savedName = Store.get('uname', S.name);
+  if (id === 'love') {
+    html = '<label>اسم اول</label><input type="text" id="fA" value="' + esc(savedName) + '">' +
+           '<label>اسم دوم</label><input type="text" id="fB" placeholder="اسم طرف مقابل">';
+  } else if (id === 'hafez') {
+    html = '<label>نیت کن و اسمت رو بنویس</label><input type="text" id="fA" value="' + esc(savedName) + '">';
+  } else {
+    html = '<label>اسم و فامیل</label><input type="text" id="fA" value="' + esc(savedName) + '">' +
+           '<label>سال تولد (شمسی)</label><input type="text" id="fY" value="' + esc(Store.get('ubirth', '1385')) + '">';
+    if (id === 'spouse') {
+      html += '<label>دنبال چه کسی هستی؟</label><select id="fG"><option value="m">همسر آقا</option><option value="f">همسر خانم</option></select>';
+    }
+  }
+  f.innerHTML = html;
+  show($('screen-scan'));
+  go('scan');
+  hide($('screen-mirror'));
+};
+
+Mirror.startScan = function () {
+  if (Mirror.busy) return;
+  var nameEl = $('fA');
+  if (nameEl && !nameEl.value) { toast('اول اسمت رو بنویس ✍️'); return; }
+  if (nameEl) Store.set('uname', nameEl.value);
+  if ($('fY')) Store.set('ubirth', $('fY').value);
+  if (Mirror.type === 'love' && (!$('fB') || !$('fB').value)) { toast('اسم دوم رو هم بنویس ❤️'); return; }
+
+  Mirror.busy = true; Mirror.prog = 0;
+  $('scanPad').className = 'fp-pad big on';
+  hide($('scanResult'));
+  vibe(40);
+  var hints = ['در حال خواندن خطوط انگشت...', 'تحلیل الگوی پوستی...', 'اتصال به آینه...', 'محاسبه نتیجه...'];
+  Mirror.timer = setInterval(function () {
+    Mirror.prog += rint(2, 6);
+    if (Mirror.prog > 100) Mirror.prog = 100;
+    $('scanPct').innerHTML = fa(Mirror.prog) + '٪';
+    $('scanHint').innerHTML = hints[Math.min(3, Math.floor(Mirror.prog / 26))];
+    if (Mirror.prog % 12 < 5) Snd.scan();
+    if (Mirror.prog >= 100) Mirror.finish();
+  }, 90);
+};
+Mirror.cancelScan = function () {
+  if (!Mirror.busy) return;
+  if (Mirror.prog < 100) {
+    clearInterval(Mirror.timer);
+    Mirror.busy = false;
+    $('scanPad').className = 'fp-pad big';
+    $('scanPct').innerHTML = '';
+    $('scanHint').innerHTML = 'انگشتت رو برنداشتی؟ دوباره نگه دار تا کامل بشه';
+  }
+};
+Mirror.finish = function () {
+  clearInterval(Mirror.timer);
+  Mirror.busy = false;
+  $('scanPad').className = 'fp-pad big';
+  $('scanHint').innerHTML = 'اثر انگشت شناسایی شد ✅';
+  vibe(120); Snd.ok();
+  var res = Mirror.compute();
+  var box = $('scanResult');
+  box.innerHTML = res.html +
+    '<div style="text-align:center;margin-top:12px">' +
+    '<span class="mini-btn" id="mShare">اشتراک متن</span> <span class="mini-btn green" id="mAgain">اسکن دوباره</span></div>';
+  show(box);
+  on($('mAgain'), 'click', function () { hide(box); Mirror.startScan(); });
+  on($('mShare'), 'click', function () {
+    popup('نتیجه', res.text.replace(/\n/g, '<br>'), null, 'بستن', false);
+  });
+  var d = mirDef(Mirror.type);
+  Mirror.saveHist(d.e, d.t, res.short);
+  Mirror.renderHistory();
+};
+
+/* ---------- محاسبه نتیجه (پایدار بر اساس اسم) ---------- */
+Mirror.compute = function () {
+  var id = Mirror.type;
+  var nameV = $('fA') ? $('fA').value : S.name;
+  var yearV = $('fY') ? $('fY').value : '1385';
+  var seedBase = normFa(nameV) + '|' + yearV + '|' + id;
+  if (id === 'daily' || id === 'luck' || id === 'think' || id === 'hafez') seedBase += '|' + dayKey();
+  var rnd = seedRnd(hashStr(seedBase));
+  var html = '', text = '', shortT = '';
+
+  function line(k, v) { return '<div class="res-line">' + k + ': <b>' + v + '</b></div>'; }
+  function head(t, s) { return '<div class="res-h">' + t + '</div><div class="res-sub">' + s + '</div>'; }
+  function bar(p) { return '<div class="bar"><i style="width:' + p + '%"></i></div>'; }
+
+  if (id === 'job') {
+    var job = pickS(JOBS, rnd);
+    var salary = rintS(35, 400, rnd) * 1000000;
+    var age = rintS(22, 33, rnd);
+    var city = pickS(CITIES, rnd);
+    var succ = rintS(68, 99, rnd);
+    html = head(job.e + ' ' + job.t, 'اثر انگشت ' + esc(nameV) + ' تحلیل شد') +
+      '<div class="res-line">' + job.d + '</div>' +
+      line('سن شروع این شغل', fa(age) + ' سالگی') +
+      line('شهر محل کار', city) +
+      line('درآمد ماهانه تخمینی', faNum(salary) + ' تومان') +
+      line('احتمال موفقیت', fa(succ) + '٪') + bar(succ) +
+      line('شغل دوم احتمالی', pickS(JOBS, rnd).t);
+    shortT = job.t;
+    text = 'شغل آینده‌ی من: ' + job.t + '\nسن شروع: ' + age + '\nشهر: ' + city;
+
+  } else if (id === 'spouse') {
+    var g = $('fG') ? $('fG').value : 'f';
+    var sname = pickS(g === 'm' ? SPOUSE_M : SPOUSE_F, rnd);
+    var scity = pickS(CITIES, rnd);
+    var strait = pickS(TRAITS, rnd);
+    var sjob = pickS(JOBS, rnd);
+    var sage = rintS(19, 34, rnd);
+    var meet = pickS(MEET_PLACES, rnd);
+    var match = rintS(72, 99, rnd);
+    var kids = rintS(0, 4, rnd);
+    html = head('💍 ' + sname, 'همسر آینده‌ی ' + esc(nameV)) +
+      line('اسم', sname) + line('اهل', scity) + line('شغل', sjob.e + ' ' + sjob.t) +
+      line('اخلاق', strait) + line('سن تو موقع ازدواج', fa(sage) + ' سالگی') +
+      line('جایی که آشنا می‌شید', meet) + line('تعداد فرزند', fa(kids)) +
+      line('درصد تفاهم', fa(match) + '٪') + bar(match);
+    shortT = sname + ' از ' + scity;
+    text = 'همسر آینده‌ی من: ' + sname + ' از ' + scity + ' • تفاهم ' + match + '٪';
+
+  } else if (id === 'marriage') {
+    var mage = rintS(19, 35, rnd), season = pickS(['بهار', 'تابستان', 'پاییز', 'زمستان'], rnd);
+    var yy = parseInt(yearV, 10) || 1385;
+    html = head('📅 ' + fa(mage) + ' سالگی', 'سال ' + fa(yy + mage) + ' شمسی، فصل ' + season) +
+      line('نوع آشنایی', pickS(['سنتی و خانوادگی', 'خودت انتخاب می‌کنی', 'از طریق دوستان', 'محل کار'], rnd)) +
+      line('احتمال دقت پیش‌بینی', fa(rintS(70, 96, rnd)) + '٪') +
+      '<div class="res-line">قبل از اون سال، یه رابطه‌ی جدی دیگه هم تجربه می‌کنی که باعث پختگیت می‌شه.</div>';
+    shortT = fa(mage) + ' سالگی';
+    text = 'سن ازدواج من: ' + mage;
+
+  } else if (id === 'wealth') {
+    var w = rintS(3, 90, rnd) * 1000000000;
+    var wage = rintS(26, 45, rnd);
+    var src = pickS(['کسب‌وکار شخصی', 'ارث و ملک', 'سرمایه‌گذاری', 'شغل تخصصی', 'کار در خارج از کشور', 'اینترنت و محتوا'], rnd);
+    html = head('💰 ' + faNum(w) + ' تومان', 'دارایی تخمینی در ' + fa(wage) + ' سالگی') +
+      line('منبع اصلی ثروت', src) +
+      line('اولین ماشین گران‌قیمتت', pickS(['بنز', 'بی‌ام‌و', 'شاسی‌بلند', 'تویوتا', 'پژو ۲۰۷ 😄'], rnd)) +
+      line('تعداد سفر خارجی', fa(rintS(2, 30, rnd)) + ' بار') +
+      line('شانس ثروتمند شدن', fa(rintS(55, 98, rnd)) + '٪');
+    shortT = faNum(w) + ' تومان';
+    text = 'ثروت آینده‌ی من حدود ' + faNum(w) + ' تومان';
+
+  } else if (id === 'kids') {
+    var n = rintS(0, 4, rnd);
+    var names = [], i2;
+    for (i2 = 0; i2 < n; i2++) names.push(pickS(i2 % 2 ? SPOUSE_F : SPOUSE_M, rnd));
+    html = head('👶 ' + fa(n) + ' فرزند', 'پیش‌بینی بر اساس اثر انگشت') +
+      line('اسم‌های احتمالی', names.length ? names.join('، ') : 'فعلاً هیچ‌کدوم') +
+      line('اولین فرزند', n ? pickS(['پسر', 'دختر'], rnd) : '—') +
+      line('سن تو موقع اولین فرزند', n ? fa(rintS(22, 38, rnd)) + ' سالگی' : '—');
+    shortT = fa(n) + ' فرزند';
+    text = 'تعداد فرزند من: ' + n;
+
+  } else if (id === 'person') {
+    var p = pickS(PERSONALITY, rnd);
+    var iq = rintS(105, 149, rnd), eq = rintS(60, 99, rnd), soc = rintS(40, 99, rnd), cre = rintS(50, 99, rnd);
+    html = head(p.e + ' ' + p.t, 'تیپ شخصیتی ' + esc(nameV)) +
+      '<div class="res-line">' + p.d + '</div>' +
+      line('نقاط قوت', p.s.join('، ')) + line('نقطه ضعف', p.w.join('، ')) +
+      line('هوش تحلیلی', fa(iq)) + bar(Math.min(100, iq - 50)) +
+      line('هوش هیجانی', fa(eq) + '٪') + bar(eq) +
+      line('مهارت اجتماعی', fa(soc) + '٪') + bar(soc) +
+      line('خلاقیت', fa(cre) + '٪') + bar(cre);
+    shortT = p.t;
+    text = 'تیپ شخصیتی من: ' + p.t;
+
+  } else if (id === 'love') {
+    var a = $('fA').value, b = $('fB').value;
+    var r2 = seedRnd(hashStr(normFa(a) + '❤' + normFa(b)));
+    var pct = rintS(35, 100, r2);
+    var v = ['کشش اولیه', 'تفاهم فکری', 'صبر و گذشت', 'شوخ‌طبعی مشترک', 'آینده مشترک'];
+    var lines = '', i3;
+    for (i3 = 0; i3 < v.length; i3++) { var q = rintS(30, 100, r2); lines += line(v[i3], fa(q) + '٪') + bar(q); }
+    html = head('❤️ ' + fa(pct) + '٪', esc(a) + ' و ' + esc(b)) + bar(pct) + lines +
+      '<div class="res-line">' + (pct > 85 ? 'ترکیب فوق‌العاده‌ای هستید! 😍' : pct > 60 ? 'شانس خوبیه، ولی گفتگو لازمه 🙂' : pct > 40 ? 'سخته ولی نشدنی نیست 💪' : 'شاید بهتره فقط دوست بمونید 😅') + '</div>';
+    shortT = a + ' و ' + b + ': ' + fa(pct) + '٪';
+    text = 'درصد عشق ' + a + ' و ' + b + ': ' + pct + '٪';
+
+  } else if (id === 'think') {
+    var who = pickS(SPOUSE_M.concat(SPOUSE_F), rnd);
+    var letter = who.charAt(0);
+    html = head('💭 حرف «' + letter + '»', 'کسی که امروز بهت فکر کرده') +
+      line('حدس اسم', who) +
+      line('چند بار امروز', fa(rintS(1, 9, rnd)) + ' بار') +
+      line('احساسش', pickS(['دلتنگی', 'علاقه', 'نگرانی', 'خاطره خوب', 'حسادت مثبت'], rnd)) +
+      line('تماس می‌گیره؟', pickS(['احتمالاً امشب', 'تا سه روز آینده', 'منتظره تو پیام بدی', 'خجالت می‌کشه'], rnd));
+    shortT = 'حرف ' + letter;
+    text = 'یه نفر با حرف ' + letter + ' بهم فکر می‌کنه';
+
+  } else if (id === 'daily') {
+    var mood = rintS(40, 100, rnd), luck = rintS(30, 100, rnd), money = rintS(20, 100, rnd), love2 = rintS(30, 100, rnd);
+    html = head('🌙 طالع امروز', faDate()) +
+      line('حال و انرژی', fa(mood) + '٪') + bar(mood) +
+      line('شانس', fa(luck) + '٪') + bar(luck) +
+      line('مالی', fa(money) + '٪') + bar(money) +
+      line('عشق', fa(love2) + '٪') + bar(love2) +
+      '<div class="res-line">🔮 ' + pickS(TALES, rnd) + '</div>' +
+      line('ساعت خوش‌شانسی', fa(rintS(8, 22, rnd)) + ':' + fa(pickS(['۰۰', '۱۵', '۳۰', '۴۵'], rnd))) +
+      line('رنگ امروز', pickS(LUCKY_COLORS, rnd));
+    shortT = 'انرژی ' + fa(mood) + '٪';
+    text = 'طالع امروز من: انرژی ' + mood + '٪';
+
+  } else if (id === 'hafez') {
+    var f = pickS(HAFEZ, rnd);
+    html = head('📖 فال حافظ', 'نیت: ' + esc(nameV)) +
+      '<div class="res-line" style="text-align:center;line-height:2.2;font-size:15px">' + f.v + '</div>' +
+      '<div class="res-line"><b>تعبیر:</b> ' + f.m + '</div>';
+    shortT = 'فال گرفته شد';
+    text = 'فال حافظ: ' + f.m;
+
+  } else if (id === 'luck') {
+    var lk = rintS(25, 100, rnd);
+    html = head('🍀 ' + fa(lk) + '٪', 'شانس امروز ' + esc(nameV)) + bar(lk) +
+      line('عدد شانس', fa(rintS(1, 99, rnd))) +
+      line('رنگ شانس', pickS(LUCKY_COLORS, rnd)) +
+      line('جهت خوش‌یمن', pickS(['شمال', 'جنوب', 'شرق', 'غرب'], rnd)) +
+      line('کاری که امروز نکن', pickS(['قرض دادن پول', 'سفر طولانی', 'دعوا سر موضوع بی‌اهمیت', 'خرید گران', 'قول دادن'], rnd)) +
+      line('کاری که امروز بکن', pickS(['به یه نفر کمک کن', 'زنگ بزن به مامان', 'یه کار عقب‌افتاده رو تموم کن', 'ورزش کن', 'زود بخواب'], rnd));
+    shortT = fa(lk) + '٪ شانس';
+    text = 'شانس امروز من ' + lk + '٪';
+
+  } else if (id === 'face') {
+    html = head('🪞 ۲۰ سال بعد', 'شبیه‌سازی چهره‌ی ' + esc(nameV)) +
+      line('حالت مو', pickS(['کم‌پشت‌تر ولی مرتب', 'جوگندمی و جذاب', 'همون مدل الان', 'کوتاه و اسپرت'], rnd)) +
+      line('وزن', pickS(['حدود ۵ کیلو بیشتر', 'تقریباً همین', 'فیت و ورزشکاری', 'کمی لاغرتر'], rnd)) +
+      line('سبک لباس', pickS(['رسمی و شیک', 'اسپرت راحت', 'کلاسیک', 'خاص و متفاوت'], rnd)) +
+      line('چهره', pickS(['خندون با خط لبخند', 'جدی و باوقار', 'مهربون و آروم', 'پرانرژی مثل الان'], rnd)) +
+      line('سن ظاهری', fa(rintS(3, 9, rnd)) + ' سال جوان‌تر از سن واقعی') +
+      '<div class="res-line">آدم‌ها می‌گن: «هیچ فرقی نکردی!» 😄</div>';
+    shortT = 'شبیه‌سازی انجام شد';
+    text = 'چهره ۲۰ سال بعد من شبیه‌سازی شد';
+
+  } else if (id === 'star') {
+    var st = pickS(PERSONAS, rnd);
+    var sim = rintS(62, 99, rnd);
+    html = head(st.emoji + ' ' + st.name, 'شبیه‌ترین ستاره به ' + esc(nameV)) + bar(sim) +
+      line('شباهت', fa(sim) + '٪') +
+      line('وجه اشتراک', pickS(['اراده‌ی آهنین', 'شوخ‌طبعی', 'عشق به خانواده', 'کمال‌گرایی', 'رهبری'], rnd)) +
+      line('چیزی که باید ازش یاد بگیری', pickS(['نظم روزانه', 'صبر', 'ریسک‌پذیری', 'تمرکز روی هدف'], rnd));
+    shortT = st.name + ' ' + fa(sim) + '٪';
+    text = 'من ' + sim + '٪ شبیه ' + st.name + ' هستم';
+  }
+
+  return { html: html, text: text, short: shortT };
+};
+
+Mirror.init = function () {
+  Mirror.renderGrid();
+  var pad = $('scanPad');
+  on(pad, 'touchstart', function (e) { e.preventDefault(); Mirror.startScan(); });
+  on(pad, 'touchend', function () { Mirror.cancelScan(); });
+  on(pad, 'mousedown', function () { Mirror.startScan(); });
+  on(pad, 'mouseup', function () { Mirror.cancelScan(); });
+  on($('scanBack'), 'click', function () { go('mirror', true); Mirror.renderHistory(); });
+};
+
+</script>
+<script>
+/* lie.js — دروغ‌سنج مبتنی بر حسگرهای واقعی تبلت
+   چیزهایی که واقعاً اندازه‌گیری می‌شن:
+   1) زمان واکنش و مکث قبل از جواب (میلی‌ثانیه)
+   2) لرزش دست با شتاب‌سنج (انحراف معیار شتاب)
+   3) فشار و سطح تماس انگشت روی صفحه (از MotionEvent اندروید)
+   4) بی‌ثباتی صدا با میکروفون (RMS)
+   با یک مرحله کالیبراسیون (سوال‌های کنترلی) پایه‌ی شخصی ساخته می‌شه و
+   جواب‌های بعدی با انحراف از همون پایه سنجیده می‌شن.
+*/
+var Lie = {
+  step: 'intro',
+  cal: [],          /* نمونه‌های کالیبراسیون */
+  runs: [],         /* نتیجه سوالات */
+  qList: [],
+  qIndex: 0,
+  sampling: false,
+  samples: null,
+  tStart: 0,
+  sampT: null,
+  hold: false,
+  sensors: { accel: false, pressure: false, mic: false }
+};
+
+var LIE_QUESTIONS = [
+  'تا حالا به کسی دروغ گفتی؟',
+  'الان راست می‌گی؟',
+  'از کسی خوشت میاد؟',
+  'تکالیفت رو انجام دادی؟',
+  'چیزی رو از خانواده‌ات پنهان کردی؟',
+  'گوشی کسی رو بدون اجازه چک کردی؟',
+  'به بهترین دوستت همه چیز رو می‌گی؟'
+];
+
+/* ---------- خواندن حسگرها ---------- */
+Lie.nativeSensor = function () {
+  try {
+    if (window.Android && window.Android.sensors) {
+      var s = window.Android.sensors();   /* "ax,ay,az,pressure,size,mic" */
+      if (s) {
+        var p = String(s).split(',');
+        return { ax: +p[0], ay: +p[1], az: +p[2], pr: +p[3], sz: +p[4], mic: +p[5] };
+      }
+    }
+  } catch (e) {}
+  return null;
+};
+Lie.detect = function () {
+  var n = Lie.nativeSensor();
+  if (n) {
+    Lie.sensors.accel = !(n.ax === 0 && n.ay === 0 && n.az === 0);
+    Lie.sensors.pressure = n.pr >= 0;
+    Lie.sensors.mic = n.mic >= 0;
+  } else {
+    Lie.sensors.accel = !!window.DeviceMotionEvent;
+    Lie.sensors.pressure = false;
+    Lie.sensors.mic = false;
+  }
+};
+
+/* شتاب‌سنج مرورگری (وقتی پل اندروید نیست) */
+Lie.webAccel = { x: 0, y: 0, z: 0, ok: false };
+Lie.motionHandler = function (e) {
+  var a = e.accelerationIncludingGravity || e.acceleration;
+  if (a && a.x !== null) { Lie.webAccel.x = a.x || 0; Lie.webAccel.y = a.y || 0; Lie.webAccel.z = a.z || 0; Lie.webAccel.ok = true; }
+};
+
+/* لمس: مدت تماس، جابه‌جایی انگشت (لرزش دست روی صفحه) */
+Lie.touchTrack = { moves: 0, dist: 0, lastX: 0, lastY: 0, down: false };
+
+Lie.startSampling = function () {
+  Lie.sampling = true;
+  Lie.samples = { acc: [], pr: [], mic: [], t0: Date.now() };
+  Lie.touchTrack.moves = 0; Lie.touchTrack.dist = 0;
+  if (window.Android && window.Android.startMic) { try { window.Android.startMic(); } catch (e) {} }
+  Lie.sampT = setInterval(function () {
+    var n = Lie.nativeSensor(), mag;
+    if (n) {
+      mag = Math.sqrt(n.ax * n.ax + n.ay * n.ay + n.az * n.az);
+      Lie.samples.acc.push(mag);
+      if (n.pr >= 0) Lie.samples.pr.push(n.pr);
+      if (n.mic >= 0) Lie.samples.mic.push(n.mic);
+    } else if (Lie.webAccel.ok) {
+      mag = Math.sqrt(Lie.webAccel.x * Lie.webAccel.x + Lie.webAccel.y * Lie.webAccel.y + Lie.webAccel.z * Lie.webAccel.z);
+      Lie.samples.acc.push(mag);
+    }
+  }, 60);
+};
+Lie.stopSampling = function () {
+  Lie.sampling = false;
+  if (Lie.sampT) { clearInterval(Lie.sampT); Lie.sampT = null; }
+  if (window.Android && window.Android.stopMic) { try { window.Android.stopMic(); } catch (e) {} }
+};
+
+function stat(arr) {
+  var i, s = 0, m, v = 0;
+  if (!arr || !arr.length) return { m: 0, sd: 0, n: 0, max: 0 };
+  for (i = 0; i < arr.length; i++) s += arr[i];
+  m = s / arr.length;
+  for (i = 0; i < arr.length; i++) v += (arr[i] - m) * (arr[i] - m);
+  var mx = arr[0];
+  for (i = 1; i < arr.length; i++) if (arr[i] > mx) mx = arr[i];
+  return { m: m, sd: Math.sqrt(v / arr.length), n: arr.length, max: mx };
+}
+
+/* ---------- رابط کاربری ---------- */
+Lie.open = function () {
+  Lie.detect();
+  Lie.step = 'intro';
+  Lie.cal = []; Lie.runs = []; Lie.qIndex = 0;
+  Lie.render();
+  go('lie');
+};
+
+Lie.render = function () {
+  var box = $('lieScroll');
+  if (Lie.step === 'intro') Lie.renderIntro(box);
+  else if (Lie.step === 'cal' || Lie.step === 'test') Lie.renderTest(box);
+  else if (Lie.step === 'pick') Lie.renderPick(box);
+  else if (Lie.step === 'result') Lie.renderResult(box);
+};
+
+Lie.renderIntro = function (box) {
+  var s = Lie.sensors;
+  function badge(ok, t) { return '<div class="res-line">' + (ok ? '✅' : '⚠️') + ' ' + t + (ok ? '' : ' <span style="color:#8a93ad">(روی این دستگاه در دسترس نیست)</span>') + '</div>'; }
+  box.innerHTML =
+    '<div class="card" style="margin-top:10px">' +
+      '<div class="res-h">🕵️ دروغ‌سنج حسگری</div>' +
+      '<div class="res-sub">این دروغ‌سنج از داده‌ی واقعی حسگرهای تبلت استفاده می‌کنه</div>' +
+      badge(true, 'زمان واکنش و مکث قبل از جواب') +
+      badge(s.accel, 'لرزش دست با شتاب‌سنج') +
+      badge(s.pressure, 'فشار و سطح تماس انگشت') +
+      badge(s.mic, 'بی‌ثباتی صدا با میکروفون') +
+      '<div class="res-line" style="color:#8a93ad;font-size:12.5px;line-height:1.9">' +
+      'اول ۳ سؤال کنترلی می‌پرسیم تا حالت عادی بدنت اندازه‌گیری بشه (کالیبراسیون)، ' +
+      'بعد جواب‌های تو با همون پایه مقایسه می‌شه. صادقانه: این روش علمیِ قطعی نیست و برای سرگرمیه، ' +
+      'ولی اعدادش واقعی و از خود حسگرهاست، نه رندوم.</div>' +
+      '<button class="big-btn" id="lieStart">شروع کالیبراسیون</button>' +
+    '</div>';
+  on($('lieStart'), 'click', function () {
+    Lie.step = 'cal'; Lie.qIndex = 0;
+    Lie.qList = [
+      { q: 'انگشتت روی صفحه هست؟ (جواب: بله)', truth: true },
+      { q: 'الان روی کره‌ی مریخ هستی؟ (جواب: خیر)', truth: false },
+      { q: 'اسمت ' + S.name + ' هست؟ (راستش رو بگو)', truth: true }
+    ];
+    Lie.render();
+  });
+};
+
+Lie.renderPick = function (box) {
+  var i, html = '<div class="card" style="margin-top:10px"><div class="res-h">سؤال‌ها رو انتخاب کن</div>' +
+    '<div class="res-sub">کالیبراسیون انجام شد ✅ حالا سؤال بپرس</div>' +
+    '<label>سؤال دلخواه</label><input type="text" id="lieCustom" placeholder="مثلا: شیشه رو تو شکستی؟">' +
+    '<button class="mini-btn green" id="lieAddQ">اضافه کن</button>' +
+    '<div style="margin-top:10px" class="res-sub">یا از سؤال‌های آماده بزن:</div><div class="chip-row" id="lieChips">';
+  for (i = 0; i < LIE_QUESTIONS.length; i++) html += '<span class="chip" data-i="' + i + '">' + LIE_QUESTIONS[i] + '</span>';
+  html += '</div><div id="lieQueue" style="margin-top:10px"></div>' +
+    '<button class="big-btn" id="lieGo">شروع بازجویی 🕵️</button></div>';
+  box.innerHTML = html;
+
+  function drawQueue() {
+    var q = $('lieQueue'), i2, h = '';
+    for (i2 = 0; i2 < Lie.qList.length; i2++) h += '<div class="res-line">' + fa(i2 + 1) + '. ' + esc(Lie.qList[i2].q) + '</div>';
+    q.innerHTML = h || '<div class="empty">هنوز سؤالی اضافه نکردی</div>';
+  }
+  Lie.qList = [];
+  drawQueue();
+  var chips = $('lieChips').getElementsByTagName('span'), j;
+  for (j = 0; j < chips.length; j++) {
+    (function (idx) {
+      on(chips[idx], 'click', function () {
+        if (Lie.qList.length >= 6) { toast('حداکثر ۶ سؤال'); return; }
+        Lie.qList.push({ q: LIE_QUESTIONS[idx], truth: null }); Snd.tap(); drawQueue();
+      });
+    })(j);
+  }
+  on($('lieAddQ'), 'click', function () {
+    var v = $('lieCustom').value;
+    if (!v) { toast('سؤال رو بنویس'); return; }
+    if (Lie.qList.length >= 6) { toast('حداکثر ۶ سؤال'); return; }
+    Lie.qList.push({ q: v, truth: null }); $('lieCustom').value = ''; drawQueue();
+  });
+  on($('lieGo'), 'click', function () {
+    if (!Lie.qList.length) { toast('حداقل یه سؤال اضافه کن'); return; }
+    Lie.step = 'test'; Lie.qIndex = 0; Lie.runs = []; Lie.render();
+  });
+};
+
+Lie.renderTest = function (box) {
+  var item = Lie.qList[Lie.qIndex];
+  var isCal = (Lie.step === 'cal');
+  box.innerHTML =
+    '<div class="card" style="margin-top:10px;text-align:center">' +
+      '<div class="res-sub">' + (isCal ? 'کالیبراسیون' : 'بازجویی') + ' • سؤال ' + fa(Lie.qIndex + 1) + ' از ' + fa(Lie.qList.length) + '</div>' +
+      '<div id="lieQ" style="font-size:18px;font-weight:bold;margin:14px 6px;line-height:1.9">انگشتت رو روی حسگر بذار و نگه دار...</div>' +
+      '<div class="fp-pad big" id="liePad" style="margin:0 auto"><div class="fp-ring"></div><div class="fp-icon">☝</div><div class="fp-scan"></div><div class="fp-pct" id="liePct"></div></div>' +
+      '<div id="lieLive" class="res-sub" style="margin-top:8px">—</div>' +
+      '<div id="lieAns" class="hidden" style="margin-top:12px">' +
+        '<div class="res-sub">بلند و واضح جواب بده، بعد دکمه رو بزن</div>' +
+        '<button class="cbtn green" id="lieYes" style="width:96px;height:56px;border-radius:14px;font-size:18px">بله</button>' +
+        '<button class="cbtn red" id="lieNo" style="width:96px;height:56px;border-radius:14px;font-size:18px">خیر</button>' +
+      '</div>' +
+    '</div><div class="pad60"></div>';
+
+  var pad = $('liePad'), started = false, qShown = false, delayT = null, liveT = null;
+
+  function beginHold() {
+    if (started) return;
+    started = true;
+    pad.className = 'fp-pad big on';
+    Lie.startSampling();
+    vibe(30);
+    var wait = 900 + rint(400, 1800);
+    $('lieQ').innerHTML = 'آماده...';
+    delayT = setTimeout(function () {
+      qShown = true;
+      Lie.tStart = Date.now();
+      $('lieQ').innerHTML = esc(item.q);
+      Snd.tone(880, 0.12, 'sine', 0.1);
+      show($('lieAns'));
+    }, wait);
+    liveT = setInterval(function () {
+      if (!Lie.samples) return;
+      var a = stat(Lie.samples.acc), m = stat(Lie.samples.mic);
+      $('lieLive').innerHTML = 'لرزش: ' + fa(Math.round(a.sd * 100) / 100) +
+        (Lie.sensors.mic ? ' • صدا: ' + fa(Math.round(m.m * 100)) : '') +
+        ' • نمونه: ' + fa(Lie.samples.acc.length);
+    }, 300);
+  }
+  function endHold(answer) {
+    if (!started) return;
+    if (delayT) clearTimeout(delayT);
+    if (liveT) clearInterval(liveT);
+    var rt = qShown ? (Date.now() - Lie.tStart) : 0;
+    Lie.stopSampling();
+    pad.className = 'fp-pad big';
+    if (!qShown) { started = false; $('lieQ').innerHTML = 'زود برداشتی! دوباره انگشتت رو نگه دار'; return; }
+
+    var a = stat(Lie.samples.acc), p = stat(Lie.samples.pr), mi = stat(Lie.samples.mic);
+    var rec = {
+      q: item.q, ans: answer, rt: rt,
+      tremor: a.sd, accM: a.m,
+      prSd: p.sd, prM: p.m,
+      micM: mi.m, micSd: mi.sd,
+      moves: Lie.touchTrack.moves, dist: Lie.touchTrack.dist
+    };
+    if (Lie.step === 'cal') Lie.cal.push(rec); else Lie.runs.push(rec);
+    Snd.pop(); vibe(60);
+
+    Lie.qIndex++;
+    if (Lie.qIndex >= Lie.qList.length) {
+      if (Lie.step === 'cal') { Lie.step = 'pick'; }
+      else { Lie.step = 'result'; }
+    }
+    setTimeout(Lie.render, 350);
+  }
+
+  on(pad, 'touchstart', function (e) { e.preventDefault(); Lie.touchTrack.down = true; beginHold(); });
+  on(pad, 'mousedown', function () { beginHold(); });
+  on(pad, 'touchmove', function (e) {
+    if (!Lie.sampling) return;
+    var t = e.touches[0];
+    if (Lie.touchTrack.lastX) {
+      var dx = t.clientX - Lie.touchTrack.lastX, dy = t.clientY - Lie.touchTrack.lastY;
+      Lie.touchTrack.dist += Math.sqrt(dx * dx + dy * dy);
+      Lie.touchTrack.moves++;
+    }
+    Lie.touchTrack.lastX = t.clientX; Lie.touchTrack.lastY = t.clientY;
+  });
+  on(pad, 'touchend', function () {
+    if (!qShown) { if (delayT) clearTimeout(delayT); if (liveT) clearInterval(liveT); Lie.stopSampling(); started = false; pad.className = 'fp-pad big'; $('lieQ').innerHTML = 'انگشتت رو تا آخر نگه دار ☝'; }
+  });
+  on($('lieYes'), 'click', function () { endHold('بله'); });
+  on($('lieNo'), 'click', function () { endHold('خیر'); });
+};
+
+/* ---------- محاسبه نتیجه ---------- */
+Lie.analyze = function () {
+  var i, rts = [], trs = [], prs = [], mcs = [];
+  for (i = 0; i < Lie.cal.length; i++) {
+    rts.push(Lie.cal[i].rt); trs.push(Lie.cal[i].tremor);
+    prs.push(Lie.cal[i].prSd); mcs.push(Lie.cal[i].micSd);
+  }
+  var bRT = stat(rts), bTR = stat(trs), bPR = stat(prs), bMC = stat(mcs);
+  function z(x, b, minSd) {
+    var sd = b.sd > minSd ? b.sd : minSd;
+    if (!b.n) return 0;
+    return (x - b.m) / sd;
+  }
+  var out = [];
+  for (i = 0; i < Lie.runs.length; i++) {
+    var r = Lie.runs[i];
+    var zRT = z(r.rt, bRT, 220);
+    var zTR = z(r.tremor, bTR, 0.05);
+    var zPR = Lie.sensors.pressure ? z(r.prSd, bPR, 0.005) : 0;
+    var zMC = Lie.sensors.mic ? z(r.micSd, bMC, 0.01) : 0;
+
+    var wSum = 0.40 + 0.30, sum = 0.40 * zRT + 0.30 * zTR;
+    if (Lie.sensors.pressure) { sum += 0.15 * zPR; wSum += 0.15; }
+    if (Lie.sensors.mic) { sum += 0.25 * zMC; wSum += 0.25; }
+    var zc = sum / wSum;
+    var stress = Math.round(100 / (1 + Math.exp(-1.25 * (zc - 0.15))));
+    if (stress < 3) stress = 3; if (stress > 97) stress = 97;
+    out.push({
+      q: r.q, ans: r.ans, stress: stress, rt: r.rt, tremor: r.tremor,
+      zRT: zRT, zTR: zTR, zPR: zPR, zMC: zMC,
+      verdict: stress >= 70 ? 'دروغ محتمل' : (stress >= 45 ? 'مشکوک' : 'راست')
+    });
+  }
+  return { rows: out, base: { rt: bRT, tr: bTR, pr: bPR, mc: bMC } };
+};
+
+Lie.renderResult = function (box) {
+  var res = Lie.analyze(), i, r, html, total = 0;
+  for (i = 0; i < res.rows.length; i++) total += res.rows[i].stress;
+  var avg = res.rows.length ? Math.round(total / res.rows.length) : 0;
+  var honesty = 100 - avg;
+
+  html = '<div class="card" style="margin-top:10px">' +
+    '<div class="res-h">' + (honesty >= 70 ? '🟢' : honesty >= 45 ? '🟡' : '🔴') + ' صداقت کلی: ' + fa(honesty) + '٪</div>' +
+    '<div class="res-sub">بر پایه‌ی ' + fa(Lie.cal.length) + ' نمونه‌ی کالیبراسیون</div>' +
+    '<div class="bar"><i style="width:' + honesty + '%"></i></div>';
+  for (i = 0; i < res.rows.length; i++) {
+    r = res.rows[i];
+    html += '<div class="res-line" style="border-bottom:1px solid #2b3145;padding:10px 0">' +
+      '<div style="font-weight:bold">' + fa(i + 1) + '. ' + esc(r.q) + '</div>' +
+      '<div style="font-size:12.5px;color:#8a93ad;margin:4px 0">جواب داد: <b>' + r.ans + '</b> • ' +
+      'نتیجه: <b style="color:' + (r.stress >= 70 ? '#e0284a' : r.stress >= 45 ? '#ff8f1f' : '#17a55f') + '">' + r.verdict + '</b>' +
+      ' (استرس ' + fa(r.stress) + '٪)</div>' +
+      '<div class="bar"><i style="width:' + r.stress + '%"></i></div>' +
+      '<div style="font-size:11.5px;color:#767f99;margin-top:5px">' +
+      'زمان واکنش ' + fa((r.rt / 1000).toFixed(2)) + ' ثانیه (' + (r.zRT >= 0 ? '+' : '') + fa(r.zRT.toFixed(1)) + 'σ) • ' +
+      'لرزش ' + fa(r.tremor.toFixed(2)) + ' (' + (r.zTR >= 0 ? '+' : '') + fa(r.zTR.toFixed(1)) + 'σ)' +
+      (Lie.sensors.pressure ? ' • فشار ' + (r.zPR >= 0 ? '+' : '') + fa(r.zPR.toFixed(1)) + 'σ' : '') +
+      (Lie.sensors.mic ? ' • صدا ' + (r.zMC >= 0 ? '+' : '') + fa(r.zMC.toFixed(1)) + 'σ' : '') +
+      '</div></div>';
+  }
+  html += '<div class="res-line" style="color:#8a93ad;font-size:12px;line-height:1.9">σ یعنی انحراف از حالت عادی خودت. ' +
+    'عدد بالاتر = واکنش غیرعادی‌تر. این نتیجه قطعی نیست و ارزش قضایی نداره 🙂</div>' +
+    '<button class="big-btn" id="lieAgain">تست دوباره</button>' +
+    '<button class="big-btn danger" id="lieExit">بستن</button></div><div class="pad60"></div>';
+  box.innerHTML = html;
+  Snd.ok();
+  Mirror.saveHist('🕵️', 'دروغ‌سنج', 'صداقت ' + fa(honesty) + '٪');
+  on($('lieAgain'), 'click', function () { Lie.open(); });
+  on($('lieExit'), 'click', function () { go('mirror', true); Mirror.renderHistory(); });
+};
+
+Lie.init = function () {
+  if (window.DeviceMotionEvent) window.addEventListener('devicemotion', Lie.motionHandler, false);
+  on($('lieBack'), 'click', function () { Lie.stopSampling(); go('mirror', true); Mirror.renderHistory(); });
+  on($('lieInfo'), 'click', function () {
+    popup('چطور کار می‌کنه؟',
+      'زمان واکنش، لرزش دست (شتاب‌سنج)، فشار انگشت و بی‌ثباتی صدا اندازه‌گیری می‌شه و با حالت عادی خودت (کالیبراسیون) مقایسه می‌شه.<br>' +
+      'اختلاف زیاد از حالت عادی = استرس بیشتر. برای نتیجه‌ی بهتر: تبلت رو توی دست بگیر، بلند جواب بده و همیشه یک انگشت ثابت رو روی حسگر بذار.',
+      null, 'فهمیدم', false);
+  });
+};
+
+</script>
+<script>
+/* live.js — لایو اینستاگرامی (شبیه‌سازی) */
+var Live = {
+  cur: null,
+  mine: false,
+  viewers: 0,
+  timers: [],
+  hearts: 0,
+  gifts: 0,
+  myComments: 0,
+  startTs: 0,
+  followed: false
+};
+
+Live.renderList = function () {
+  var box = $('liveList'), i, c, p, v;
+  box.innerHTML = '';
+  for (i = 0; i < PERSONAS.length; i++) {
+    p = PERSONAS[i];
+    v = Math.round(p.followers / rint(600, 3000)) + rint(100, 5000);
+    c = elc('div', 'lcard');
+    c.innerHTML = '<div class="lcard-in" style="background:-webkit-linear-gradient(top,' + p.color + '55,#0f1428)">' +
+      '<div class="lcard-live">● زنده</div><div class="lcard-eye">👁 ' + compact(v) + '</div>' +
+      '<div class="lcard-ava" style="background:' + p.color + '">' + p.emoji + '</div>' +
+      '<div class="lcard-n">' + esc(p.short) + ' • ' + esc(p.live ? p.live.title : '') + '</div></div>';
+    (function (pid) { on(c, 'click', function () { Snd.tap(); Live.start(pid); }); })(p.id);
+    box.appendChild(c);
+  }
+  /* استوری‌ها */
+  var sr = $('storyRow'), st;
+  sr.innerHTML = '';
+  st = elc('div', 'story');
+  st.innerHTML = '<div class="story-c"><div class="story-in">' + S.emoji + '</div></div><div class="story-n">استوری تو</div>';
+  on(st, 'click', function () { Social.viewStory(null); });
+  sr.appendChild(st);
+  for (i = 0; i < PERSONAS.length; i++) {
+    p = PERSONAS[i];
+    st = elc('div', 'story');
+    st.innerHTML = '<div class="story-c"><div class="story-in">' + p.emoji + '</div></div><div class="story-n">' + esc(p.short) + '</div>';
+    (function (pid) { on(st, 'click', function () { Social.viewStory(pid); }); })(p.id);
+    sr.appendChild(st);
+  }
+};
+
+Live.start = function (pid, mine) {
+  Live.stop();
+  Live.mine = !!mine;
+  Live.cur = mine ? { id: 'me', name: S.name, short: S.name, emoji: S.emoji, color: '#e0284a', followers: S.followers, live: { title: 'لایو من', says: [] } } : getPersona(pid);
+  Live.viewers = mine ? rint(50, 400) : Math.round(Live.cur.followers / rint(800, 2500)) + rint(500, 6000);
+  Live.hearts = 0; Live.gifts = 0; Live.myComments = 0; Live.startTs = Date.now();
+  Live.followed = Social.isFollowing(Live.cur.id);
+
+  $('lhAva').innerHTML = Live.cur.emoji; $('lhAva').style.background = Live.cur.color;
+  $('lhName').innerHTML = esc(Live.cur.name) + (Live.cur.verified ? ' <span class="vbadge">✔</span>' : '');
+  $('liveHostAva').innerHTML = Live.cur.emoji; $('liveHostAva').style.background = Live.cur.color;
+  $('lhViewers').innerHTML = '👁 ' + compact(Live.viewers);
+  $('lhFollow').innerHTML = Live.followed ? 'دنبال می‌کنی' : 'دنبال کردن';
+  $('lhFollow').className = Live.followed ? 'lh-follow on' : 'lh-follow';
+  if (Live.mine) hide($('lhFollow')); else show($('lhFollow'));
+  $('liveComments').innerHTML = '';
+  $('liveJoins').innerHTML = '';
+  $('liveSay').innerHTML = Live.mine ? 'دوربین روشنه! داری پخش زنده می‌کنی 🔴' : '';
+  hide($('giftPan'));
+  go('live');
+
+  /* تایمرها */
+  Live.timers.push(setInterval(Live.tickViewers, 1400));
+  Live.timers.push(setInterval(Live.tickComment, 1700));
+  Live.timers.push(setInterval(Live.tickJoin, 4200));
+  Live.timers.push(setInterval(Live.tickSay, 9000));
+  Live.timers.push(setInterval(Live.tickHeart, 900));
+  Live.timers.push(setInterval(Live.tickTag, 1000));
+  if (Live.mine) Live.timers.push(setInterval(Live.tickGiftIn, 7000));
+  Live.tickSay();
+  Snd.pop();
+};
+
+Live.stop = function () {
+  var i;
+  for (i = 0; i < Live.timers.length; i++) clearInterval(Live.timers[i]);
+  Live.timers = [];
+};
+
+Live.end = function () {
+  var dur = Math.round((Date.now() - Live.startTs) / 1000);
+  var name = Live.cur ? Live.cur.short : '';
+  var mine = Live.mine;
+  Live.stop();
+  go('lives', true);
+  var body = 'مدت: ' + fa(pad2(Math.floor(dur / 60)) + ':' + pad2(dur % 60)) + '<br>' +
+    'بیشترین بیننده: ' + compact(Live.viewers) + '<br>' +
+    'قلب‌ها: ' + fa(Live.hearts) + ' • هدیه‌ها: ' + fa(Live.gifts) + '<br>' +
+    'کامنت‌های تو: ' + fa(Live.myComments);
+  if (mine) {
+    var newF = rint(50, 1200) + Live.gifts * 30;
+    S.followers += newF; saveSettings(); Social.renderProfile();
+    body += '<br>🎉 ' + faNum(newF) + ' فالوور جدید گرفتی!';
+  }
+  popup(mine ? 'لایوت تموم شد' : 'لایو ' + name + ' تموم شد', body, null, 'باشه', false);
+};
+
+Live.tickTag = function () {
+  var d = Math.round((Date.now() - Live.startTs) / 1000);
+  $('liveTag').innerHTML = '🔴 زنده • ' + fa(pad2(Math.floor(d / 60)) + ':' + pad2(d % 60));
+};
+Live.tickViewers = function () {
+  var delta = rint(-40, 260);
+  Live.viewers += delta;
+  if (Live.viewers < 30) Live.viewers = 30 + rint(0, 50);
+  $('lhViewers').innerHTML = '👁 ' + compact(Live.viewers);
+};
+Live.addComment = function (user, text, cls) {
+  var box = $('liveComments');
+  var c = elc('div', 'cmt' + (cls ? ' ' + cls : ''));
+  c.innerHTML = '<b>' + esc(user) + '</b> ' + esc(text);
+  box.appendChild(c);
+  while (box.childNodes.length > (S.fx ? 7 : 5)) box.removeChild(box.firstChild);
+};
+Live.tickComment = function () {
+  var t = pick(LIVE_CMTS);
+  if (Math.random() < 0.12) t = pick(STICKERS) + ' ' + pick(STICKERS);
+  Live.addComment(randUser(), t);
+};
+Live.tickJoin = function () {
+  var box = $('liveJoins');
+  var j = elc('div', 'join-i', randUser() + ' ' + pick(LIVE_JOIN));
+  box.appendChild(j);
+  if (box.childNodes.length > 3) box.removeChild(box.firstChild);
+  var n = rint(1, 40);
+  Live.viewers += n;
+};
+Live.tickSay = function () {
+  if (Live.mine) return;
+  var says = (Live.cur.live && Live.cur.live.says) ? Live.cur.live.says : ['سلام به همه ❤️'];
+  var s = pick(says);
+  $('liveSay').innerHTML = '«' + esc(s) + '»';
+  Snd.tone(rint(320, 460), 0.1, 'sine', 0.04);
+};
+Live.tickHeart = function () {
+  if (!S.fx) return;
+  if (Math.random() < 0.55) Live.flyHeart(pick(['❤️', '💖', '💛', '💚', '💙']));
+};
+Live.flyHeart = function (emo) {
+  var box = $('hearts');
+  var h = elc('div', 'hrt', emo);
+  h.style.left = rint(0, 30) + 'px';
+  h.style.bottom = '0px';
+  box.appendChild(h);
+  Live.hearts++;
+  var y = 0, x0 = rint(-10, 14), t = 0;
+  var iv = setInterval(function () {
+    t++; y += 5;
+    h.style.bottom = y + 'px';
+    h.style.marginLeft = Math.round(Math.sin(t / 3) * 12 + x0) + 'px';
+    h.style.opacity = Math.max(0, 1 - y / 230);
+    if (y > 230) { clearInterval(iv); if (h.parentNode) h.parentNode.removeChild(h); }
+  }, 45);
+};
+Live.tickGiftIn = function () {
+  var g = pick(GIFTS);
+  Live.gifts++;
+  Live.addComment(randUser(), 'یه ' + g.n + ' ' + g.e + ' فرستاد!', 'host');
+  Live.showGift(g.e);
+};
+Live.showGift = function (e) {
+  var box = $('giftFly');
+  box.innerHTML = e;
+  box.style.opacity = '1';
+  var o = 1;
+  var iv = setInterval(function () {
+    o -= 0.06; box.style.opacity = o;
+    if (o <= 0) { clearInterval(iv); box.innerHTML = ''; }
+  }, 60);
+};
+
+Live.sendComment = function () {
+  var v = $('liveInput').value;
+  if (!v) return;
+  $('liveInput').value = '';
+  Live.addComment(S.name, v, 'mine');
+  Live.myComments++;
+  Snd.pop();
+  if (Live.mine) {
+    setTimeout(function () { Live.addComment(randUser(), pick(['آره موافقم', 'چه باحال 😂', 'ادامه بده', 'دمت گرم ❤️'])); }, 1200);
+    return;
+  }
+  /* جواب میزبان به کامنت تو */
+  if (Math.random() < 0.7) {
+    setTimeout(function () {
+      var p = Live.cur;
+      var reply = Chat.answerFor(p, v);
+      $('liveSay').innerHTML = '«' + esc(S.name) + ' جان، ' + esc(reply) + '»';
+      Live.addComment(p.short, '@' + S.name + ' ' + reply, 'host');
+      Snd.msg(); vibe(60);
+      toast('🎉 ' + p.short + ' به کامنت تو جواب داد!');
+    }, rint(1200, 3000));
+  }
+};
+
+/* پاسخ برای شخصیت دلخواه (بدون تغییر چت فعلی) */
+Chat.answerFor = function (p, text) {
+  var old = Chat.cur;
+  Chat.cur = p;
+  var a = Chat.answer(text);
+  Chat.cur = old;
+  return String(a).split('\n')[0];
+};
+
+Live.init = function () {
+  on($('lhClose'), 'click', function () { Live.end(); });
+  on($('liveSend'), 'click', function () { Live.sendComment(); });
+  on($('liveInput'), 'keydown', function (e) { if (e.keyCode === 13) { Live.sendComment(); e.preventDefault(); } });
+  on($('liveHeart'), 'click', function () {
+    var i;
+    for (i = 0; i < 4; i++) setTimeout(function () { Live.flyHeart('❤️'); }, i * 90);
+    Snd.tap(); vibe(20);
+  });
+  on($('lhFollow'), 'click', function () {
+    Live.followed = !Live.followed;
+    Social.setFollowing(Live.cur.id, Live.followed);
+    $('lhFollow').innerHTML = Live.followed ? 'دنبال می‌کنی' : 'دنبال کردن';
+    $('lhFollow').className = Live.followed ? 'lh-follow on' : 'lh-follow';
+    if (Live.followed) { toast('حالا ' + Live.cur.short + ' رو دنبال می‌کنی ✅'); Snd.ok(); }
+  });
+  on($('liveGift'), 'click', function () {
+    var pan = $('giftPan'), i, g, e;
+    if (pan.className.indexOf('hidden') < 0) { hide(pan); return; }
+    if (!pan.innerHTML) {
+      for (i = 0; i < GIFTS.length; i++) {
+        g = GIFTS[i];
+        e = elc('div', 'gift-i', '<div class="gift-e">' + g.e + '</div><div class="gift-n">' + g.n + '<br>' + fa(g.c) + ' سکه</div>');
+        (function (gg) {
+          on(e, 'click', function () {
+            if (S.coins < gg.c) { toast('سکه کافی نداری! از بخش پروفایل سکه بگیر'); Snd.err(); return; }
+            S.coins -= gg.c; saveSettings();
+            Live.gifts++;
+            Live.showGift(gg.e);
+            Live.addComment(S.name, 'یه ' + gg.n + ' ' + gg.e + ' فرستاد!', 'mine');
+            hide($('giftPan'));
+            Snd.ok(); vibe(80);
+            setTimeout(function () {
+              if (!Live.mine && Live.cur) {
+                $('liveSay').innerHTML = '«مرسی ' + esc(S.name) + ' بابت ' + gg.n + '! ' + pick(['خیلی لطف کردی ❤️', 'دمت گرم 🙏', 'قربونت 😍']) + '»';
+                Live.addComment(Live.cur.short, '@' + S.name + ' مرسی بابت ' + gg.n + ' ' + gg.e, 'host');
+                Snd.msg();
+              }
+            }, 1200);
+          });
+        })(g);
+        pan.appendChild(e);
+      }
+    }
+    show(pan);
+  });
+};
+
+</script>
+<script>
+/* social.js — پروفایل، استوری، صفحه ستاره‌ها */
+var Social = {};
+
+var POST_EMO = ['⚽','🏆','🔥','😎','🌇','🍕','🏝','🎮','🚗','🐶','🎤','💪','📚','🎯','🌹','☕','🎂','🏀','✈️','🌙','🎬','🥇'];
+var POST_CAP = ['یه روز خوب ☀️','خاطره‌ی خوب 😍','تمرین سخت 💪','با رفقا 🤝','سفر آخر هفته ✈️','قهوه و آرامش ☕','بازی دیشب ⚽','لحظه‌های ناب ✨'];
+
+Social.following = function () { return Store.get('following', {}); };
+Social.isFollowing = function (id) { var f = Social.following(); return !!f[id]; };
+Social.setFollowing = function (id, v) {
+  var f = Social.following();
+  if (v) f[id] = 1; else delete f[id];
+  Store.set('following', f);
+  S.following = 312 + (function () { var c = 0, k; for (k in f) if (f.hasOwnProperty(k)) c++; return c; })();
+  saveSettings();
+  Social.renderProfile();
+};
+
+/* ---------- پروفایل خودم ---------- */
+Social.renderProfile = function () {
+  if (!$('psFol')) return;
+  $('profAva').innerHTML = S.emoji;
+  $('profName').innerHTML = esc(S.name) + (S.verified ? ' <span class="vbadge">✔</span>' : '');
+  $('profBio').innerHTML = esc(S.bio) + '<br>💰 ' + faNum(S.coins) + ' سکه';
+  $('psFol').innerHTML = compact(S.followers);
+  $('psFing').innerHTML = fa(S.following);
+  $('psPosts').innerHTML = fa(S.posts);
+
+  var hl = $('hlRow'), i, h, items = ['⭐ برترین‌ها', '⚽ ورزش', '✈️ سفر', '🎉 تولد', '🍕 غذا'];
+  hl.innerHTML = '';
+  for (i = 0; i < items.length; i++) {
+    h = elc('div', 'story');
+    h.innerHTML = '<div class="story-c"><div class="story-in">' + items[i].split(' ')[0] + '</div></div><div class="story-n">' + items[i].split(' ')[1] + '</div>';
+    (function (t) { on(h, 'click', function () { toast('هایلایت «' + t + '» خالیه'); }); })(items[i]);
+    hl.appendChild(h);
+  }
+
+  var g = $('postGrid'), rnd = seedRnd(hashStr(S.name + 'posts')), c;
+  g.innerHTML = '';
+  for (i = 0; i < 12; i++) {
+    var emo = pickS(POST_EMO, rnd), col = AVA_COLORS[Math.floor(rnd() * AVA_COLORS.length)];
+    c = elc('div', 'pcell');
+    c.innerHTML = '<div class="pcell-in" style="background:' + col + '33">' + emo + '</div>';
+    (function (e2, idx) {
+      on(c, 'click', function () {
+        var likes = Math.round(S.followers * (0.03 + Math.random() * 0.12));
+        popup('پست ' + e2, pick(POST_CAP) + '<br><br>❤️ ' + compact(likes) + ' لایک<br>💬 ' + compact(Math.round(likes / 40)) + ' کامنت<br>👁 ' + compact(likes * 6) + ' بازدید', null, 'بستن', false);
+      });
+    })(emo, i);
+    g.appendChild(c);
+  }
+};
+
+Social.boost = function () {
+  var add = rint(1000, 90000), step = Math.max(1, Math.round(add / 40)), got = 0;
+  Snd.ok();
+  var iv = setInterval(function () {
+    got += step; S.followers += step;
+    $('psFol').innerHTML = compact(S.followers);
+    if (got >= add) {
+      clearInterval(iv); saveSettings();
+      S.coins += rint(10, 120); saveSettings(); Social.renderProfile();
+      toast('🚀 ' + faNum(add) + ' فالوور جدید + سکه گرفتی!');
+    }
+  }, 45);
+};
+
+/* ---------- پروفایل ستاره ---------- */
+Social.openStar = function (pid) {
+  var p = getPersona(pid);
+  $('starTitle').innerHTML = esc(p.name);
+  $('starSub').innerHTML = '@' + p.handle;
+  var box = $('starScroll'), i, html;
+  var fol = Social.isFollowing(p.id);
+  html = '<div class="prof-head"><div class="prof-ava" style="background:' + p.color + '">' + p.emoji + '</div>' +
+    '<div class="prof-stats"><div class="ps"><b>' + fa(rint(300, 4200)) + '</b><span>پست</span></div>' +
+    '<div class="ps"><b>' + compact(p.followers) + '</b><span>دنبال‌کننده</span></div>' +
+    '<div class="ps"><b>' + fa(rint(40, 700)) + '</b><span>دنبال‌شونده</span></div></div></div>' +
+    '<div class="prof-name">' + esc(p.name) + (p.verified ? ' <span class="vbadge">✔</span>' : '') + '</div>' +
+    '<div class="prof-bio">' + esc(p.bio) + '<br>' + esc(p.job) + '</div>' +
+    '<div class="prof-btns">' +
+    '<button class="mini-btn ' + (fol ? '' : 'green') + '" id="stFol">' + (fol ? 'دنبال می‌کنی ✓' : 'دنبال کردن') + '</button>' +
+    '<button class="mini-btn" id="stMsg">پیام</button>' +
+    '<button class="mini-btn" id="stCall">تماس</button>' +
+    '<button class="mini-btn" id="stLive">لایو</button></div><div class="post-grid">';
+  var rnd = seedRnd(hashStr(p.id + 'posts'));
+  for (i = 0; i < 12; i++) {
+    html += '<div class="pcell"><div class="pcell-in" style="background:' + p.color + '33">' + pickS(POST_EMO, rnd) + '</div></div>';
+  }
+  html += '</div><div class="pad60"></div>';
+  box.innerHTML = html;
+  on($('stFol'), 'click', function () {
+    var nf = !Social.isFollowing(p.id);
+    Social.setFollowing(p.id, nf);
+    $('stFol').innerHTML = nf ? 'دنبال می‌کنی ✓' : 'دنبال کردن';
+    $('stFol').className = nf ? 'mini-btn' : 'mini-btn green';
+    if (nf) { Snd.ok(); toast('✅ ' + p.short + ' رو دنبال کردی'); }
+  });
+  on($('stMsg'), 'click', function () { Chat.open(p.id); });
+  on($('stCall'), 'click', function () { Calls.incoming(p.id, 'voice', ''); });
+  on($('stLive'), 'click', function () { Live.start(p.id); });
+  go('star');
+};
+
+/* ---------- استوری ---------- */
+Social.storyBox = null;
+Social.viewStory = function (pid) {
+  var p = pid ? getPersona(pid) : null;
+  if (!Social.storyBox) {
+    var b = elc('div', 'call-screen');
+    b.id = 'storyBox';
+    b.style.zIndex = '650';
+    document.body.appendChild(b);
+    Social.storyBox = b;
+  }
+  var box = Social.storyBox;
+  var txts = p ? [
+    'تمرین امروز تموم شد 💪',
+    'ممنون از حمایتتون ❤️',
+    'فردا بازی مهمی داریم ⚽',
+    'یه سلام به ایرانیای عزیز 🇮🇷'
+  ] : ['امروز حالم عالیه 😎', 'کی بیداره؟ 🌙', 'روز خوبی داشته باشید ☀️'];
+  var t = pick(txts);
+  var color = p ? p.color : '#e0284a';
+  box.innerHTML =
+    '<div class="call-bg" style="background:-webkit-linear-gradient(top,' + color + ',#0a0c14)"></div>' +
+    '<div style="position:relative;padding:10px 12px"><div style="height:3px;background:rgba(255,255,255,.3);border-radius:3px"><i id="stPB" style="display:block;height:100%;width:0;background:#fff"></i></div>' +
+    '<div style="display:-webkit-box;display:flex;-webkit-box-align:center;align-items:center;margin-top:8px">' +
+    '<div class="row-ava" style="background:' + color + ';width:36px;height:36px;line-height:36px;font-size:15px">' + (p ? p.emoji : S.emoji) + '</div>' +
+    '<div style="color:#fff;font-size:14px;padding:0 8px;-webkit-box-flex:1;flex:1">' + esc(p ? p.name : S.name) + ' <span style="color:#bbb;font-size:11px">' + fa(rint(1, 9)) + ' ساعت پیش</span></div>' +
+    '<button class="ico-btn" style="color:#fff" id="stClose">✕</button></div></div>' +
+    '<div style="position:absolute;top:45%;left:8%;right:8%;text-align:center;color:#fff;font-size:20px;line-height:2">' + esc(t) + '</div>' +
+    '<div style="position:absolute;bottom:20px;left:12px;right:12px;text-align:center">' +
+    '<button class="mini-btn" id="stReply">جواب بده</button> <button class="mini-btn green" id="stLike">❤️ لایک</button></div>';
+  show(box);
+  var w = 0;
+  var iv = setInterval(function () {
+    w += 1.4;
+    var pb = $('stPB'); if (pb) pb.style.width = w + '%';
+    if (w >= 100) { clearInterval(iv); hide(box); }
+  }, 70);
+  on($('stClose'), 'click', function () { clearInterval(iv); hide(box); });
+  on($('stLike'), 'click', function () { Snd.pop(); toast('❤️ لایک شد'); });
+  on($('stReply'), 'click', function () {
+    clearInterval(iv); hide(box);
+    if (p) Chat.open(p.id); else toast('این استوری خودته 😄');
+  });
+};
+
+Social.init = function () {
+  on($('btnBoost'), 'click', function () { Social.boost(); });
+  on($('btnGoLive'), 'click', function () {
+    popup('شروع لایو', 'می‌خوای لایو بذاری؟ فالوورها میان و بهت هدیه می‌دن 🎁', function () { Live.start(null, true); }, 'شروع کن', 'نه');
+  });
+  on($('btnEditProf'), 'click', function () { go('set'); });
+  on($('psFolBox'), 'click', function () {
+    popup('دنبال‌کننده‌ها', 'در ۲۴ ساعت گذشته ' + faNum(rint(200, 9000)) + ' نفر تو رو دنبال کردن 🎉<br>معروف‌ترینشون: ' + pick(PERSONAS).name, null, 'ایول', false);
+  });
+  on($('starBack'), 'click', function () { goBack(); });
+  Social.renderProfile();
+};
+
+</script>
+<script>
+/* app.js — راه‌اندازی و صفحه خانه */
+
+var HOME_ITEMS = [
+  { e: '💬', t: 'چت با رونالدو', s: 'پیام فارسی', go: function () { Chat.open('cr7'); } },
+  { e: '📞', t: 'زنگ بزنه بهم', s: 'زمان‌بندی', go: function () { go('calls'); } },
+  { e: '💼', t: 'شغل آینده', s: 'اثر انگشت', go: function () { go('mirror'); Mirror.open('job'); } },
+  { e: '💍', t: 'همسر آینده', s: 'اثر انگشت', go: function () { go('mirror'); Mirror.open('spouse'); } },
+  { e: '🕵️', t: 'دروغ‌سنج', s: 'حسگر واقعی', go: function () { Lie.open(); } },
+  { e: '📡', t: 'لایو ستاره‌ها', s: 'مثل اینستا', go: function () { go('lives'); } },
+  { e: '❤️', t: 'درصد عشق', s: 'دو اسم', go: function () { go('mirror'); Mirror.open('love'); } },
+  { e: '📖', t: 'فال حافظ', s: 'نیت کن', go: function () { go('mirror'); Mirror.open('hafez'); } },
+  { e: '🧠', t: 'شخصیت‌شناسی', s: 'اثر انگشت', go: function () { go('mirror'); Mirror.open('person'); } },
+  { e: '🍀', t: 'شانس امروز', s: 'روزانه', go: function () { go('mirror'); Mirror.open('luck'); } },
+  { e: '🔴', t: 'لایو خودم', s: 'فالوور بگیر', go: function () { Live.start(null, true); } },
+  { e: '⭐', t: 'صفحه ستاره‌ها', s: 'پروفایل', go: function () { Social.openStar(pick(PERSONAS).id); } },
+  { e: '👶', t: 'تعداد فرزند', s: 'اثر انگشت', go: function () { go('mirror'); Mirror.open('kids'); } },
+  { e: '💰', t: 'ثروت آینده', s: 'اثر انگشت', go: function () { go('mirror'); Mirror.open('wealth'); } },
+  { e: '⚙', t: 'تنظیمات', s: 'شخصی‌سازی', go: function () { go('set'); } }
+];
+
+App.renderHome = function () {
+  if (!$('homeGrid')) return;
+  $('homeName').innerHTML = esc(S.name);
+  $('homeDate').innerHTML = faDate();
+  $('homeClock').innerHTML = clock();
+
+  var g = $('homeGrid'), i, c;
+  if (!g.innerHTML) {
+    for (i = 0; i < HOME_ITEMS.length; i++) {
+      c = elc('div', 'gcell');
+      c.innerHTML = '<div class="gcell-in"><div class="gcell-ico">' + HOME_ITEMS[i].e + '</div>' +
+        '<div class="gcell-t">' + HOME_ITEMS[i].t + '</div><div class="gcell-s">' + HOME_ITEMS[i].s + '</div></div>';
+      (function (fn) { on(c, 'click', function () { Snd.tap(); fn(); }); })(HOME_ITEMS[i].go);
+      g.appendChild(c);
+    }
+  }
+
+  /* آمار امروز */
+  var rnd = seedRnd(hashStr(S.name + dayKey()));
+  var energy = rintS(45, 100, rnd), luck = rintS(30, 100, rnd);
+  var alarms = Calls.alarms(), live = 0, j;
+  for (j = 0; j < alarms.length; j++) if (!alarms[j].done) live++;
+  var st = $('homeStats');
+  st.innerHTML =
+    '<div class="stat"><div class="stat-in"><div class="stat-v">' + compact(S.followers) + '</div><div class="stat-l">فالوور</div></div></div>' +
+    '<div class="stat"><div class="stat-in"><div class="stat-v">' + fa(energy) + '٪</div><div class="stat-l">انرژی امروز</div></div></div>' +
+    '<div class="stat"><div class="stat-in"><div class="stat-v">' + fa(luck) + '٪</div><div class="stat-l">شانس امروز</div></div></div>' +
+    '<div class="stat"><div class="stat-in"><div class="stat-v">' + fa(Chat.totalUnread()) + '</div><div class="stat-l">پیام نخوانده</div></div></div>' +
+    '<div class="stat"><div class="stat-in"><div class="stat-v">' + fa(live) + '</div><div class="stat-l">تماس ثبت‌شده</div></div></div>' +
+    '<div class="stat"><div class="stat-in"><div class="stat-v">' + faNum(S.coins) + '</div><div class="stat-l">سکه</div></div></div>';
+
+  /* تماس‌های نزدیک */
+  var box = $('homeAlarms'), r, p, k, cnt = 0;
+  box.innerHTML = '';
+  for (k = 0; k < alarms.length; k++) {
+    if (alarms[k].done) continue;
+    p = getPersona(alarms[k].pid);
+    r = elc('div', 'row');
+    var mins = Math.max(0, Math.round((alarms[k].at - Date.now()) / 60000));
+    r.innerHTML = '<div class="row-ava" style="background:' + p.color + '">' + p.emoji + '</div>' +
+      '<div class="row-mid"><div class="row-t">' + esc(p.short) + ' • ' + fa(pad2(alarms[k].h) + ':' + pad2(alarms[k].m)) + '</div>' +
+      '<div class="row-s">' + (mins > 60 ? fa(Math.round(mins / 60)) + ' ساعت دیگه' : fa(mins) + ' دقیقه دیگه') + '</div></div>' +
+      '<div class="row-e">' + (alarms[k].kind === 'video' ? '📹' : '📞') + '</div>';
+    box.appendChild(r); cnt++;
+    if (cnt >= 3) break;
+  }
+  if (!cnt) box.innerHTML = '<div class="empty">تماسی تنظیم نشده — از بخش «تماس» ساعت بذار</div>';
+
+  /* کارت ستاره بالای صفحه */
+  var hp = getPersona('cr7');
+  $('heroAva').innerHTML = hp.emoji; $('heroAva').style.background = hp.color;
+  $('heroLine').innerHTML = pick(['آنلاین است • همین الان', 'الان لایو داره 🔴', 'تازه استوری گذاشت', 'منتظر پیام توئه 💬']);
+};
+
+App.onScreen = function (name) {
+  if (name === 'home') App.renderHome();
+  else if (name === 'chats') Chat.renderList();
+  else if (name === 'lives') Live.renderList();
+  else if (name === 'mirror') Mirror.renderHistory();
+  else if (name === 'calls') { Calls.renderAlarms(); Calls.renderHist(); }
+  else if (name === 'profile') Social.renderProfile();
+  else if (name === 'set') App.fillSettings();
+};
+
+/* ---------- تنظیمات ---------- */
+var EMOJIS = ['😎','🦁','👑','⚽','🔥','🐐','🎮','🌹','🐶','🦅','💎','🎤','🚀','🌙','🧠','🕶'];
+App.fillSettings = function () {
+  $('setName').value = S.name;
+  $('setBio').value = S.bio;
+  var e = $('setEmoji'), i, d;
+  if (!e.innerHTML) {
+    for (i = 0; i < EMOJIS.length; i++) {
+      d = elc('div', 'emo' + (EMOJIS[i] === S.emoji ? ' on' : ''), EMOJIS[i]);
+      (function (em) {
+        on(d, 'click', function () {
+          S.emoji = em; saveSettings();
+          var all = e.getElementsByTagName('div'), j;
+          for (j = 0; j < all.length; j++) all[j].className = (all[j].innerHTML === em) ? 'emo on' : 'emo';
+          Snd.tap(); Social.renderProfile();
+        });
+      })(EMOJIS[i]);
+      e.appendChild(d);
+    }
+  }
+  var sel = $('setFol'), opts = [1200, 25000, 150000, 900000, 2400000, 12000000, 88000000], o;
+  if (!sel.innerHTML) {
+    for (i = 0; i < opts.length; i++) { o = document.createElement('option'); o.value = opts[i]; o.innerHTML = compact(opts[i]); sel.appendChild(o); }
+  }
+  sel.value = S.followers > 88000000 ? 88000000 : (opts.indexOf ? (opts.indexOf(S.followers) >= 0 ? S.followers : opts[4]) : opts[4]);
+  function sw(id, val) { $(id).className = val ? 'sw on' : 'sw'; }
+  sw('swTheme', S.theme === 'light'); sw('swSound', S.sound); sw('swVibe', S.vibe);
+  sw('swFx', S.fx); sw('swLock', S.lock); sw('swPush', S.push);
+};
+
+App.initSettings = function () {
+  function toggle(id, key, after) {
+    on($(id), 'click', function () {
+      var b = $(id), nv = b.className.indexOf('on') < 0;
+      b.className = nv ? 'sw on' : 'sw';
+      if (key) { S[key] = nv; saveSettings(); }
+      Snd.tap();
+      if (after) after(nv);
+    });
+  }
+  toggle('swTheme', null, function (v) {
+    S.theme = v ? 'light' : 'dark'; saveSettings();
+    document.body.className = v ? 'theme-light' : 'theme-dark';
+  });
+  toggle('swSound', 'sound'); toggle('swVibe', 'vibe'); toggle('swFx', 'fx');
+  toggle('swLock', 'lock'); toggle('swPush', 'push');
+  on($('setSave'), 'click', function () {
+    S.name = $('setName').value || 'دوست من';
+    S.bio = $('setBio').value || S.bio;
+    S.followers = parseInt($('setFol').value, 10) || S.followers;
+    saveSettings(); Social.renderProfile(); App.renderHome();
+    Snd.ok(); toast('ذخیره شد ✅');
+  });
+  on($('setReset'), 'click', function () {
+    popup('پاک کردن همه چیز', 'همه‌ی چت‌ها، تماس‌ها و نتیجه‌ها پاک بشه؟', function () {
+      Store.clearAll(); location.reload();
+    }, 'آره پاک کن', 'نه');
+  });
+};
+
+/* ---------- بوت ---------- */
+App.boot = function () {
+  loadSettings();
+
+  /* تب‌ها */
+  var tabs = $('tabbar').getElementsByTagName('button'), i;
+  for (i = 0; i < tabs.length; i++) {
+    (function (b) {
+      on(b, 'click', function () { Snd.tap(); go(b.getAttribute('data-s'), true); navStack = []; });
+    })(tabs[i]);
+  }
+
+  Chat.init(); Calls.init(); Mirror.init(); Lie.init(); Live.init(); Social.init(); App.initSettings();
+
+  on($('heroChat'), 'click', function () { Chat.open('cr7'); });
+  on($('heroCall'), 'click', function () { Calls.incoming('cr7', 'voice', ''); });
+  on($('heroCard'), 'click', function (e) {
+    if (e.target.className.indexOf('mini-btn') >= 0) return;
+    Social.openStar('cr7');
+  });
+
+  App.renderHome();
+  Chat.updateBadge();
+
+  /* ساعت */
+  setInterval(function () {
+    if (curScreen === 'home') $('homeClock').innerHTML = clock();
+    if ($('lockClock')) $('lockClock').innerHTML = clock();
+  }, 10000);
+
+  /* رفرش خانه */
+  setInterval(function () { if (curScreen === 'home') App.renderHome(); }, 60000);
+
+  /* پیام‌های تصادفی ستاره‌ها */
+  setInterval(function () { if (Math.random() < 0.35) Chat.randomPing(); }, 90000);
+
+  /* دکمه برگشت اندروید */
+  window.handleBack = function () {
+    if (Calls.active) { Calls.decline(); return true; }
+    if (goBack()) return true;
+    return false;
+  };
+
+  /* اگر از طریق نوتیفیکیشن تماس باز شده */
+  var pid = Bridge.param('call');
+  if (pid) {
+    setTimeout(function () { Calls.incoming(pid, Bridge.param('kind') || 'voice', Bridge.param('msg') || ''); }, 900);
+  }
+  if (window.Android && window.Android.pendingCall) {
+    try {
+      var pc = window.Android.pendingCall();
+      if (pc) {
+        var parts = String(pc).split('|');
+        setTimeout(function () { Calls.incoming(parts[0], parts[1] || 'voice', parts[2] || ''); }, 900);
+      }
+    } catch (e) {}
+  }
+};
+
+/* ---------- اسپلش و قفل ---------- */
+(function () {
+  var w = 0;
+  var iv = setInterval(function () {
+    w += 7;
+    var b = $('splashBar'); if (b) b.style.width = Math.min(100, w) + '%';
+    if (w >= 100) {
+      clearInterval(iv);
+      loadSettings();
+      hide($('splash'));
+      if (S.lock) {
+        show($('lockScreen'));
+        $('lockClock').innerHTML = clock();
+        $('lockDate').innerHTML = faDate();
+        var pad = $('lockFp'), t = null, prog = 0;
+        function start() {
+          pad.className = 'fp-pad on'; prog = 0;
+          t = setInterval(function () {
+            prog += 8; Snd.scan();
+            if (prog >= 100) { clearInterval(t); unlock(); }
+          }, 80);
+        }
+        function stop() { if (t) { clearInterval(t); t = null; } pad.className = 'fp-pad'; }
+        function unlock() {
+          stop(); vibe(80); Snd.ok();
+          hide($('lockScreen')); show($('app')); App.boot();
+        }
+        on(pad, 'touchstart', function (e) { e.preventDefault(); start(); });
+        on(pad, 'touchend', stop);
+        on(pad, 'mousedown', start);
+        on(pad, 'mouseup', stop);
+        on($('lockSkip'), 'click', unlock);
+      } else {
+        show($('app'));
+        App.boot();
+      }
+    }
+  }, 60);
+})();
+
+</script>
+</body>
+</html>

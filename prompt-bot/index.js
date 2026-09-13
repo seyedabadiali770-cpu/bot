@@ -645,6 +645,34 @@ if (!BOT_TOKEN) {
     }
   });
 
+  /* --- شناسایی کانال از روی پست‌های خود کانال (روش دوم تشخیص) --- */
+  bot.on('channel_post', async ctx => {
+    try {
+      const chat = ctx.chat;
+      if (!chat || (chat.type !== 'channel' && chat.type !== 'supergroup')) return;
+      if (state.channel && String(state.channel.id) === String(chat.id)) return;
+      state.channel = {
+        id: chat.id,
+        title: chat.title || chat.username || String(chat.id),
+        username: chat.username || '',
+        type: chat.type,
+        addedAt: new Date().toISOString(),
+      };
+      if (!state.lastPostedAt) {
+        state.lastPostedAt = Date.now() - state.settings.intervalMinutes * 60 * 1000 + 60 * 1000;
+      }
+      saveState(true);
+      startScheduler();
+      console.log(`[prompt-bot] کانال از روی پست کانال شناسایی شد: ${state.channel.title} (${chat.id})`);
+      await notifyAdmin(
+        `✅ کانال شناسایی شد: <b>${esc(state.channel.title)}</b>${chat.username ? ` (@${esc(chat.username)})` : ''}\n` +
+          `⏱️ از این به بعد هر ${faNum(state.settings.intervalMinutes)} دقیقه یک پرامپت پست می‌شود.`
+      );
+    } catch (e) {
+      console.error('[prompt-bot] channel_post:', e.message);
+    }
+  });
+
   /* --- دستورها --- */
   bot.start(async ctx => {
     if (!onlyAdmin(ctx)) return;
@@ -1293,7 +1321,9 @@ if (!BOT_TOKEN) {
 
   bot
     .launch({
-      dropPendingUpdates: true,
+      // توجه: آپدیت‌های معوق را دور نمی‌ریزیم تا اگر ربات را وقتی خاموش بود در کانال
+      // ادمین کردی، همان آپدیت «ادمین شدم» را بگیرد و کانال را ثبت کند.
+      dropPendingUpdates: false,
       allowedUpdates: ['message', 'callback_query', 'my_chat_member', 'channel_post', 'edited_message'],
     })
     .then(async () => {

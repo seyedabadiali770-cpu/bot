@@ -360,6 +360,25 @@ const cb = (data) => ({
   check('خطای /connect مدیریت می‌شود', s.some(m => /❌ نشد/.test(m.text || '')));
   st.channel = keepChannel;
 
+  /* ── ۱۹) تشخیص کانال از روی پست کانال ── */
+  const storedCh = st.channel;
+  st.channel = null;
+  await post('/_reset', {});
+  await inject({
+    update_id: 0,
+    channel_post: {
+      message_id: 777,
+      chat: { id: CHANNEL, type: 'channel', title: 'کانال پرامپت تست', username: 'prompt_test_ch' },
+      date: Math.floor(Date.now() / 1000),
+      text: 'یک پست معمولی در کانال',
+    },
+  });
+  await sleep(1200);
+  check('کانال از روی پست کانال شناسایی شد', !!(st.channel && String(st.channel.id) === String(CHANNEL)), JSON.stringify(st.channel));
+  s = await sent();
+  check('ادمین از شناسایی کانال باخبر شد', s.some(m => /شناسایی شد/.test(m.text || '')));
+  st.channel = storedCh;
+
   /* ── نتیجه ── */
   console.log('\n──────── نتیجه‌ی تست ────────');
   console.log(results.join('\n'));

@@ -23,7 +23,6 @@ jobs:
 
       - name: getMe (bot identity)
         run: |
-          TOKEN=$(node -e "console.log(require('./prompt-bot/index.js') ? '' : '');" 2>/dev/null || true)
           TOKEN=$(node -e "
             const fs=require('fs');
             const src=fs.readFileSync('prompt-bot/index.js','utf8');

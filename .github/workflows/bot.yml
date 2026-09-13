@@ -29,6 +29,8 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Run bot
+        # پایان طبیعی اجرا با کد ۱۲۴ (timeout) رخ می‌دهد؛ نمی‌خواهیم کل ورک‌فلو قرمز شود
+        continue-on-error: true
         run: timeout 21000 node index.js
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}

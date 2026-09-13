@@ -33,6 +33,11 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           BOT_NAME: 🐶 DogsVPN
+          # 🎨 ربات کانال پرامپت عکس (اگر سکرت ست نشده باشد، خودکار غیرفعال می‌ماند)
+          PROMPT_BOT_TOKEN: ${{ secrets.PROMPT_BOT_TOKEN }}
+          PROMPT_ADMIN_ID: ${{ secrets.PROMPT_ADMIN_ID }}
+          PROMPT_INTERVAL_MINUTES: 60
+          PROMPT_TRY_URL: https://arena.ai
 
       - name: Save data
         if: always()

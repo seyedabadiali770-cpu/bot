@@ -1,0 +1,40 @@
+name: Test Prompt Bot
+
+on:
+  push:
+    paths:
+      - 'prompt-bot/**'
+      - '.github/workflows/prompt-bot-test.yml'
+      - 'package.json'
+  pull_request:
+    paths:
+      - 'prompt-bot/**'
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Run bot smoke test (offscreen Telegram simulator)
+        run: node prompt-bot/test/smoke-test.js
+
+      - name: Sanity check prompt bank
+        run: |
+          node -e "
+          const { PROMPTS, CATEGORIES } = require('./prompt-bot/prompts.js');
+          const cats = new Set(CATEGORIES.map(c => c.id));
+          const bad = PROMPTS.filter(p => !p.id || !p.prompt || !cats.has(p.cat));
+          if (bad.length) { console.error('پرامپت نامعتبر:', bad); process.exit(1); }
+          if (PROMPTS.length < 100) { console.error('بانک پرامپت کوچک است'); process.exit(1); }
+          console.log('✅ ' + PROMPTS.length + ' پرامپت در ' + CATEGORIES.length + ' دسته سالم است');
+          "

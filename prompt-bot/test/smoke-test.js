@@ -241,6 +241,107 @@ const cb = (data) => ({
   check('مسیر زمان‌بند هم پست می‌کند', auto.ok === true, JSON.stringify(auto));
   check('شمارنده‌ی آمار پست‌ها بالا رفت', st.stats.posts >= 2);
 
+  /* ── ۱۳) افزودن پرامپت با ویزارد گام‌به‌گام ── */
+  await post('/_reset', {});
+  const customBefore = (st.custom || []).length;
+  await inject(msg('/addprompt'));                      // شروع ویزارد
+  await sleep(700);
+  await inject(msg('a neon cyberpunk street food stall at midnight, rain, reflections, cinematic, 8k'));
+  await sleep(700);
+  await inject(msg('غرفه غذای سایبرپانک'));
+  await sleep(700);
+  await inject(msg('رنگ نئون را از صورتی به سبز تغییر بده.'));
+  await sleep(700);
+  s = await sent();
+  check('ویزارد گام دسته‌بندی را نشان داد', s.some(m => /دسته‌بندی این پرامپت/.test(m.text || '')));
+  await inject(cb('pb:addcat:cyberpunk'));
+  await sleep(900);
+  s = await sent();
+  check('ویزارد پیش‌نمایش پست را نشان داد', s.some(m => /پیش‌نمایش پرامپت تو/.test(m.text || '')));
+  await inject(cb('pb:wiz:save'));
+  await sleep(900);
+  check('پرامپت ویزاردی ذخیره شد', (st.custom || []).length === customBefore + 1);
+  const wizItem = st.custom[st.custom.length - 1];
+  check('دسته‌ی انتخاب‌شده ذخیره شد', wizItem.cat === 'cyberpunk', wizItem.cat);
+  check('عنوان و نکته‌ی فارسی ذخیره شد', /غرفه/.test(wizItem.t) && /نئون/.test(wizItem.tip));
+
+  /* ── ۱۴) لیست و حذف پرامپت سفارشی ── */
+  await post('/_reset', {});
+  await inject(msg('/mylist'));
+  await sleep(800);
+  s = await sent();
+  check('لیست پرامپت‌های من نمایش داده شد', s.some(m => /پرامپت‌های سفارشی تو/.test(m.text || '')));
+  await inject(cb('pb:del:' + wizItem.id));
+  await sleep(800);
+  check('حذف پرامپت سفارشی کار می‌کند', (st.custom || []).every(p => p.id !== wizItem.id));
+
+  /* ── ۱۵) نمونه‌کار عکس دستی ── */
+  await post('/_reset', {});
+  await inject({
+    update_id: 0,
+    message: {
+      message_id: 90210,
+      from: { id: ADMIN, is_bot: false, first_name: 'Admin', username: 'admin' },
+      chat: { id: ADMIN, type: 'private', first_name: 'Admin' },
+      date: Math.floor(Date.now() / 1000),
+      photo: [
+        { file_id: 'small123', file_unique_id: 'u1', width: 90, height: 90 },
+        { file_id: 'big456', file_unique_id: 'u2', width: 1024, height: 1024 },
+      ],
+      caption: 'نمونه‌کار دستی',
+    },
+  });
+  await sleep(900);
+  check('عکس ادمین به‌عنوان نمونه‌کار ذخیره شد', !!(st.pendingSample && st.pendingSample.fileId === 'big456'));
+  await post('/_reset', {});
+  await inject(cb('pb:sample:post'));
+  await sleep(2500);
+  s = await sent();
+  const samplePost = s.find(m => m.method === 'sendPhoto');
+  check('پست با نمونه‌کار دستی ارسال شد', !!(samplePost && samplePost.customFileId === 'big456'), JSON.stringify(samplePost || {}));
+  check('بعد از ارسال، نمونه‌کار مصرف شد', st.pendingSample === null);
+
+  /* ── ۱۶) هشتگ روی پست ── */
+  await post('/_reset', {});
+  await inject(msg('/preview'));
+  await sleep(900);
+  s = await sent();
+  const withHash = s.find(m => /#پرامپت_تصویر/.test(m.text || ''));
+  check('هشتگ‌ها در پیش‌نمایش پست هستند', !!withHash);
+  const tagCount = withHash ? (withHash.text.match(/#[\u0600-\u06FF\w]+/g) || []).length : 0;
+  check('تعداد هشتگ‌ها بین ۴ تا ۸ است', tagCount >= 4 && tagCount <= 8, 'تعداد: ' + tagCount);
+  await inject(cb('pb:togglehash'));
+  await sleep(700);
+  check('هشتگ خاموش شد', st.settings.hashtags === false);
+  await post('/_reset', {});
+  await inject(msg('/preview'));
+  await sleep(800);
+  s = await sent();
+  check('با خاموش‌بودن هشتگ، تگی در پست نیست', !s.some(m => /#پرامپت_تصویر/.test(m.text || '')));
+  await inject(cb('pb:togglehash'));
+  await sleep(700);
+
+  /* ── ۱۷) بازه‌ی زمانی شامل ساعتی + دلخواه ── */
+  await inject(cb('pb:interval'));
+  await sleep(800);
+  s = await sent();
+  check('منوی بازه شامل گزینه‌ی ساعتی است', s.some(m => /ساعت/.test(m.text || '')));
+  await inject(cb('pb:setint:720'));
+  await sleep(800);
+  check('بازه‌ی ۱۲ ساعته ست شد', st.settings.intervalMinutes === 720, String(st.settings.intervalMinutes));
+  await inject(cb('pb:setint:custom'));
+  await sleep(600);
+  await inject(msg('90'));
+  await sleep(800);
+  check('بازه‌ی دلخواه (۹۰ دقیقه) ثبت شد', st.settings.intervalMinutes === 90, String(st.settings.intervalMinutes));
+  await inject(msg('/interval 45'));
+  await sleep(700);
+  check('دستور /interval 45 کار می‌کند', st.settings.intervalMinutes === 45);
+  await inject(msg('/interval'));
+  await sleep(600);
+  s = await sent();
+  check('دستور /interval بدون عدد راهنما می‌دهد', s.some(m => /۵ تا ۱۴۴۰/.test(m.text || '')));
+
   /* ── نتیجه ── */
   console.log('\n──────── نتیجه‌ی تست ────────');
   console.log(results.join('\n'));

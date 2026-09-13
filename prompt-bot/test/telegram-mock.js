@@ -238,6 +238,10 @@ const server = http.createServer((req, res) => {
           const p = JSON.parse(body.toString('utf8') || '{}');
           chatId = p.chat_id;
           caption = p.caption || '';
+          if (typeof p.photo === 'string') {
+            sent.push({ method, chat_id: chatId, caption, customFileId: p.photo });
+            return json(ok(messageResult(chatId, { caption, photo: [{ file_id: p.photo }] })));
+          }
         } catch (e) { /* ignore */ }
       }
       if (String(chatId) === String(BAD_CHAT_ID)) {

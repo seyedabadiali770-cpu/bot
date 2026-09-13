@@ -27,7 +27,15 @@ const { CATEGORIES, PROMPTS } = require('./prompts');
 
 /* ─────────────────────────── تنظیمات ─────────────────────────── */
 
-const BOT_TOKEN = (process.env.PROMPT_BOT_TOKEN || process.env.PROMPT_TOKEN || '').trim();
+// توکن پیش‌فرض ربات کانال پرامپت (مثل بقیه‌ی ربات‌های این پروژه).
+// بهتر است برای امنیت، توکن را در متغیر محیطی PROMPT_BOT_TOKEN بگذاری و این مقدار را خالی کنی.
+const DEFAULT_PROMPT_TOKEN = '8747751997:AAHc_SIpWKmY4Y2BB4LpIDHCROKpzMm-2rs';
+
+const BOT_TOKEN = (
+  process.env.PROMPT_BOT_TOKEN ||
+  process.env.PROMPT_TOKEN ||
+  DEFAULT_PROMPT_TOKEN
+).trim();
 const BOT_NAME = process.env.PROMPT_BOT_NAME || '🎨 پرامپت عکس';
 const ADMIN_ID = String(process.env.PROMPT_ADMIN_ID || process.env.ADMIN_ID || '318405928').trim();
 
@@ -58,6 +66,8 @@ const AI_RATIO = Math.max(0, Math.min(1, Number(process.env.PROMPT_AI_RATIO || 0
 
 const STATE_PATH = process.env.PROMPT_STATE_PATH || path.join(__dirname, '..', 'data', 'prompt-bot.json');
 let bot = null; // نمونه‌ی Telegraf (در پایین مقداردهی می‌شود)
+let wizard = null; // ویزارد افزودن پرامپت: { step, data }
+let awaitingInterval = false; // منتظر عدد بازه‌ی زمانی از ادمین
 // برای تست محلی می‌توان آدرس Bot API را به شبیه‌ساز محلی تغییر داد
 const TELEGRAM_API_ROOT = (process.env.TELEGRAM_API_ROOT || '').replace(/\/+$/, '');
 const POST_INTERVAL_DEFAULT_MIN = Number(process.env.PROMPT_INTERVAL_MINUTES || 60);
@@ -79,6 +89,7 @@ const defaultState = () => ({
   nextTryAt: 0,
   seen: [], // آی‌دی پرامپت‌هایی که اخیراً پست شدن
   custom: [], // پرامپت‌های اضافه‌شده توسط ادمین
+  pendingSample: null, // نمونه‌کار عکسی که ادمین فرستاده تا در پست بعدی استفاده شود
   stats: { posts: 0, fails: 0, byDay: {} },
   history: [], // آخرین پست‌ها برای «تکرار نکن»
 });
@@ -95,6 +106,7 @@ function loadState() {
         stats: { ...s.stats, ...(raw.stats || {}) },
         seen: Array.isArray(raw.seen) ? raw.seen : [],
         custom: Array.isArray(raw.custom) ? raw.custom : [],
+        pendingSample: raw.pendingSample || null,
         history: Array.isArray(raw.history) ? raw.history : [],
       };
     }
@@ -126,6 +138,7 @@ function saveState(now = false) {
 const today = () => new Date().toISOString().slice(0, 10);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const faNum = n => Number(n || 0).toLocaleString('fa-IR');
 
 function catOf(id) {
   return CATEGORIES.find(c => c.id === id) || { id: id || 'misc', fa: 'عمومی', emoji: '🎨' };
@@ -261,20 +274,59 @@ async function makeImage(prompt) {
 
 /* ─────────────────────────── متن پست ─────────────────────────── */
 
+/** هشتگ مخصوص هر دسته */
+const CAT_HASHTAGS = {
+  portrait:   ['#پرتره', '#عکاسی_پرتره', '#PortraitPrompt'],
+  avatar:     ['#آواتار', '#پروفایل', '#AvatarPrompt'],
+  fantasy:    ['#فانتزی', '#دنیای_فانتزی', '#FantasyArt'],
+  anime:      ['#انیمه', '#مانگا', '#AnimeArt'],
+  cartoon:    ['#کارتونی', '#تصویرسازی_کودکانه', '#CartoonArt'],
+  logo:       ['#لوگو', '#برندینگ', '#LogoDesign'],
+  poster:     ['#پوستر', '#طراحی_گرافیک', '#PosterDesign'],
+  product:    ['#عکس_محصول', '#تبلیغات', '#ProductShot'],
+  food:       ['#غذا', '#عکاسی_غذا', '#FoodPhotography'],
+  scifi:      ['#علمی_تخیلی', '#فضا', '#SciFiArt'],
+  cyberpunk:  ['#سایبرپانک', '#نئون', '#CyberpunkArt'],
+  render3d:   ['#رندر_سه_بعدی', '#طراحی_سه_بعدی', '#3DRender'],
+  nature:     ['#طبیعت', '#منظره', '#NaturePhotography'],
+  persian:    ['#ایران', '#هنر_ایرانی', '#PersianArt'],
+  animal:     ['#حیوانات', '#حیات_وحش', '#AnimalArt'],
+  car:        ['#خودرو', '#ماشین', '#CarPhotography'],
+  fashion:    ['#مد', '#فشن', '#FashionEditorial'],
+  wedding:    ['#عروسی', '#عاشقانه', '#WeddingPhotography'],
+  sport:      ['#ورزشی', '#ورزش', '#SportsPhotography'],
+  painting:   ['#نقاشی', '#هنر_دستی', '#Painting'],
+  arch:       ['#معماری', '#دکوراسیون', '#Architecture'],
+  kidsbook:   ['#کتاب_کودک', '#تصویرسازی', '#KidsBookIllustration'],
+  infographic:['#اینفوگرافیک', '#نمودار', '#InfographicDesign'],
+  custom:     ['#پرامپت_اختصاصی', '#پرامپت_شخصی'],
+  misc:       ['#خلاقانه', '#ایده_عکس'],
+};
+
+/** هشتگ‌های هر پست: پایه + دسته + کلیدواژه‌های داخل پرامپت */
 function hashtagsFor(item) {
   const c = catOf(item.cat);
-  const base = ['#پرامپت_تصویر', '#هوش_مصنوعی', '#' + c.fa.replace(/[^\u0600-\u06FF\w]+/g, '_')];
   const p = String(item.prompt || '').toLowerCase();
-  if (c.id === 'logo' || p.includes('logo')) base.push('#لوگو', '#برندینگ');
-  if (/anime|manga/.test(p)) base.push('#انیمه');
-  return [...new Set(base)].join(' ');
+  const tags = ['#پرامپت_تصویر', '#هوش_مصنوعی', '#پرامپت_عکس'].concat(CAT_HASHTAGS[c.id] || []);
+
+  if (c.id !== 'portrait' && !/#پرتره/.test(tags.join('')) && /portrait|headshot|face/.test(p)) tags.push('#پرتره');
+  if (/logo|monogram|branding/.test(p)) tags.push('#لوگو', '#برندینگ');
+  if (/anime|manga|chibi|mecha/.test(p)) tags.push('#انیمه');
+  if (/cinematic|film|movie/.test(p)) tags.push('#سینمایی');
+  if (/neon|cyberpunk|synthwave/.test(p)) tags.push('#سایبرپانک');
+  if (/3d|octane|render|cgi/.test(p)) tags.push('#سه_بعدی', '#Rendering');
+  if (/midjourney|dall|stable diffusion|flux/.test(p)) tags.push('#مدل_تصویرسازی');
+  if (c.id === 'persian') tags.push('#PersianArt', '#Iran');
+  if (item.ai) tags.push('#پرامپت_هوش_مصنوعی');
+
+  return [...new Set(tags)].slice(0, 8).join(' ');
 }
 
 function buildPost(item, opts = {}) {
   const c = catOf(item.cat);
   const total = allPrompts().length;
   const head = `${c.emoji} <b>${esc(item.t || c.fa)}</b>\n`;
-  const meta = `🎬 دسته: ${esc(c.fa)}   |   🗂️ ${c.emoji}\n`;
+  const meta = `🎬 دسته: ${c.emoji} ${esc(c.fa)}   |   🧠 مناسب: Flux / Midjourney / DALL·E\n`;
   const body =
     '\n✍️ <b>پرامپت (لمس کن تا کپی شه):</b>\n' +
     `<code>${esc(item.prompt)}</code>\n` +
@@ -326,12 +378,31 @@ async function postToChannel(opts = {}) {
   const { text, shortText } = buildPost(item);
   const kb = postKeyboard(item);
   let image = null;
+  let customFileId = null;
   if (opts.withImage !== false) {
-    image = await makeImage(item.prompt);
+    // اگر ادمین «نمونه‌کار» عکسی فرستاده باشد، همان اول استفاده می‌شود
+    if (state.pendingSample && state.pendingSample.fileId && opts.useSample !== false) {
+      customFileId = state.pendingSample.fileId;
+    } else {
+      image = await makeImage(item.prompt);
+    }
   }
 
   try {
-    if (image) {
+    if (customFileId) {
+      const long = text.length > 1000;
+      await bot.telegram.sendPhoto(chatId, customFileId, {
+        caption: long ? shortText : text,
+        parse_mode: 'HTML',
+        reply_markup: kb.reply_markup,
+      });
+      if (long) {
+        await bot.telegram.sendMessage(chatId, text, { parse_mode: 'HTML', disable_web_page_preview: true });
+      }
+      image = true;
+      state.pendingSample = null;
+      saveState();
+    } else if (image) {
       // کپشن تلگرام حداکثر ۱۰۲۴ کاراکتر است؛ اگر متن بلند بود، عکس با کپشن کوتاه و متن کامل جدا می‌رود
       const long = text.length > 1000;
       await bot.telegram.sendPhoto(chatId, { source: image }, {
@@ -432,9 +503,10 @@ async function statusText() {
     `🎨 <b>${esc(BOT_NAME)}</b>\n` +
     `— — — — — — — — — —\n` +
     `📢 کانال: ${ch ? `${esc(ch.title)}${ch.username ? ` (@${esc(ch.username)})` : ''}` : '❌ متصل نیست'}\n` +
-    `⏱️ بازه‌ی پست: هر ${state.settings.intervalMinutes} دقیقه ${state.settings.paused ? '⏸ (متوقف)' : '▶️ (فعال)'}\n` +
+    `⏱️ بازه‌ی پست: هر ${faNum(state.settings.intervalMinutes)} دقیقه ${state.settings.paused ? '⏸ (متوقف)' : '▶️ (فعال)'}\n` +
     `🗂️ دسته‌بندی‌ها: ${esc(cats)}\n` +
-    `🖼️ عکس نمونه: ${state.settings.withImage ? 'روشن' : 'خاموش'} | 🤖 هوش مصنوعی: ${state.settings.useAi && AI_KEY ? 'روشن' : 'خاموش'}\n` +
+    `🖼️ عکس نمونه: ${state.settings.withImage ? 'روشن' : 'خاموش'} | 🏷️ هشتگ: ${state.settings.hashtags ? 'روشن' : 'خاموش'} | 🤖 AI: ${state.settings.useAi && AI_KEY ? 'روشن' : 'خاموش'}\n` +
+    `🧩 نمونه‌کار دستی: ${state.pendingSample ? 'ذخیره شده (پست بعدی با عکس خودت)' : 'ندارد (عکس خودکار ساخته می‌شود)'}\n` +
     `🧠 بانک پرامپت: ${allPrompts().length.toLocaleString('fa-IR')} پرامپت (${(state.custom || []).length.toLocaleString('fa-IR')} سفارشی)\n` +
     `📮 پست‌های ارسالی: ${(state.stats.posts || 0).toLocaleString('fa-IR')} | ۷ روز اخیر: ${week.toLocaleString('fa-IR')} | خطا: ${(state.stats.fails || 0).toLocaleString('fa-IR')}\n` +
     `🕒 آخرین پست: ${fmtTime(state.lastPostedAt)}\n` +
@@ -449,16 +521,26 @@ function panelKeyboard() {
       Markup.button.callback('👀 پیش‌نمایش', 'pb:preview'),
     ],
     [
-      Markup.button.callback('⏱️ بازه‌ی زمانی', 'pb:interval'),
-      Markup.button.callback('🗂️ دسته‌بندی‌ها', 'pb:cats'),
+      Markup.button.callback('➕ افزودن پرامپت خودم', 'pb:add'),
+      Markup.button.callback('🧩 نمونه‌کار عکس', 'pb:sample'),
     ],
     [
-      Markup.button.callback('🖼️ عکس نمونه', 'pb:toggleimg'),
-      Markup.button.callback('🤖 هوش مصنوعی', 'pb:toggleai'),
+      Markup.button.callback(`⏱️ ساعت/بازه: هر ${faNum(state.settings.intervalMinutes)} دقیقه`, 'pb:interval'),
+    ],
+    [
+      Markup.button.callback('🗂️ دسته‌بندی‌ها', 'pb:cats'),
+      Markup.button.callback('📚 پرامپت‌های من', 'pb:mylist'),
+    ],
+    [
+      Markup.button.callback(`🖼️ عکس نمونه: ${state.settings.withImage ? 'روشن' : 'خاموش'}`, 'pb:toggleimg'),
+      Markup.button.callback(`🏷️ هشتگ: ${state.settings.hashtags ? 'روشن' : 'خاموش'}`, 'pb:togglehash'),
+    ],
+    [
+      Markup.button.callback(`🤖 هوش مصنوعی: ${state.settings.useAi && AI_KEY ? 'روشن' : 'خاموش'}`, 'pb:toggleai'),
+      Markup.button.callback('🔄 بروزرسانی', 'pb:status'),
     ],
     [
       Markup.button.callback(state.settings.paused ? '▶️ ادامه‌ی ارسال' : '⏸ توقف موقت', 'pb:pause'),
-      Markup.button.callback('🔄 بروزرسانی وضعیت', 'pb:status'),
     ],
   ]);
 }
@@ -476,7 +558,10 @@ const HELP_TEXT =
   `/pause و /resume — توقف و ادامه\n` +
   `/ai on|off — تولید پرامپت تازه با هوش مصنوعی\n` +
   `/image on|off — عکس نمونه روشن/خاموش\n` +
-  `/addprompt متن پرامپت — افزودن پرامپت خودت به بانک\n` +
+  `/addprompt — افزودن پرامپت خودت با ویزارد گام‌به‌گام (یا سریع: \`/addprompt متن انگلیسی\`)\n` +
+  `/addprompt عنوان فارسی | نکته | متن انگلیسی — افزودن سریع یک‌خطی\n` +
+  `/mylist — دیدن و حذف‌کردن پرامپت‌های خودت\n` +
+  `/sample — راهنمای نمونه‌کار عکس\n` +
   `/stats — آمار\n` +
   `/channel — وضعیت و راهنمای اتصال کانال`;
 
@@ -626,10 +711,19 @@ if (!BOT_TOKEN) {
   bot.command('interval', async ctx => {
     if (!onlyAdmin(ctx)) return;
     const m = parseInt(String(ctx.message.text).split(/\s+/)[1], 10);
-    if (!m || m < 5) return ctx.replyWithHTML('مثال: <code>/interval 30</code> — کمترین مقدار ۵ دقیقه است.');
-    state.settings.intervalMinutes = Math.min(m, 24 * 60);
+    if (!m || m < 5 || m > 1440) {
+      return ctx.replyWithHTML(
+        '⏱️ بازه‌ی ارسال را به دقیقه بنویس (۵ تا ۱۴۴۰):\n<code>/interval 30</code> — هر نیم‌ساعت\n<code>/interval 180</code> — هر ۳ ساعت\n\n' +
+          'یا از پنل، دکمه‌ی «⏱️ ساعت/بازه» را بزن.'
+      );
+    }
+    state.settings.intervalMinutes = m;
+    state.nextTryAt = 0;
     saveState(true);
-    await ctx.replyWithHTML(`⏱️ بازه‌ی پست شد: هر ${state.settings.intervalMinutes} دقیقه`, panelKeyboard());
+    await ctx.replyWithHTML(
+      `⏱️ بازه‌ی پست شد: هر ${faNum(m)} دقیقه\n⏭️ پست بعدی: ${fmtTime(Date.now() + m * 60 * 1000)}`,
+      panelKeyboard()
+    );
   });
 
   bot.command('pause', async ctx => {
@@ -679,28 +773,107 @@ if (!BOT_TOKEN) {
     );
   });
 
-  bot.command('addprompt', async ctx => {
-    if (!onlyAdmin(ctx)) return;
-    const text = String(ctx.message.text).replace(/^\/addprompt(@\w+)?\s*/, '').trim();
-    if (!text) {
-      return ctx.replyWithHTML(
-        'متن پرامپت را بعد از دستور بنویس. مثال:\n<code>/addprompt a cozy wooden cabin in snowy forest, warm window light, cinematic, 8k</code>\n\n' +
-          'اگر با «|» جدا کنی: <code>عنوان فارسی | نکته | پرامپت انگلیسی</code>'
-      );
-    }
-    const parts = text.split('|').map(s => s.trim());
+  /* ───── ➕ افزودن پرامپت دلخواه (ویزارد گام‌به‌گام) ───── */
+
+  const WIZ_CANCEL = () =>
+    Markup.inlineKeyboard([[Markup.button.callback('❌ لغو', 'pb:wiz:cancel')]]);
+
+  function startWizard(ctx) {
+    wizard = { step: 'prompt', data: {} };
+    return ctx.replyWithHTML(
+      '➕ <b>افزودن پرامپت جدید</b> (۱ از ۳)\n\n' +
+        'متن <b>انگلیسی</b> پرامپت را بفرست — همان چیزی که داخل مدل تصویرسازی می‌چسبانی.\n' +
+        'مثال:\n<code>a cozy wooden cabin in a snowy pine forest, warm window light, falling snow, cinematic, 8k</code>',
+      WIZ_CANCEL()
+    );
+  }
+
+  function wizardPreview(data) {
+    const item = { id: 'preview', cat: data.cat || 'custom', t: data.t || 'پرامپت اختصاصی', tip: data.tip || '', prompt: data.prompt };
+    return buildPost(item).text;
+  }
+
+  function wizardConfirmKeyboard() {
+    return Markup.inlineKeyboard([
+      [Markup.button.callback('✅ ذخیره در بانک', 'pb:wiz:save')],
+      [
+        Markup.button.callback('✏️ از اول', 'pb:wiz:restart'),
+        Markup.button.callback('❌ لغو', 'pb:wiz:cancel'),
+      ],
+    ]);
+  }
+
+  function categoryKeyboard(prefix) {
+    const buttons = CATEGORIES.map(c => Markup.button.callback(`${c.emoji} ${c.fa}`, `${prefix}${c.id}`));
+    const rows = [];
+    for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
+    rows.push([Markup.button.callback('⏭️ بدون دسته (سفارشی)', `${prefix}custom`)]);
+    return Markup.inlineKeyboard(rows);
+  }
+
+  function saveCustomPrompt(data) {
     const item = {
       id: 'cu-' + Date.now().toString(36),
-      cat: 'custom',
-      t: parts.length >= 3 ? parts[0] : 'پرامپت اختصاصی',
-      tip: parts.length >= 3 ? parts[1] : '',
-      prompt: parts.length >= 3 ? parts[2] : text,
+      cat: data.cat || 'custom',
+      t: (data.t || 'پرامپت اختصاصی').trim(),
+      tip: (data.tip || '').trim(),
+      prompt: String(data.prompt || '').trim(),
+      addedAt: new Date().toISOString(),
     };
     state.custom = (state.custom || []).concat(item).slice(-500);
     saveState(true);
+    return item;
+  }
+
+  bot.command('addprompt', async ctx => {
+    if (!onlyAdmin(ctx)) return;
+    const text = String(ctx.message.text).replace(/^\/addprompt(@\w+)?\s*/, '').trim();
+    if (!text) return startWizard(ctx); // ویزارد
+    // افزودن سریع یک‌خطی
+    const parts = text.split('|').map(s => s.trim());
+    const item = saveCustomPrompt({
+      t: parts.length >= 3 ? parts[0] : 'پرامپت اختصاصی',
+      tip: parts.length >= 3 ? parts[1] : '',
+      prompt: parts.length >= 3 ? parts[2] : text,
+      cat: 'custom',
+    });
     await ctx.replyWithHTML(
-      `✅ اضافه شد (${allPrompts().length.toLocaleString('fa-IR')} پرامپت در بانک)\n\n` + buildPost(item).text,
+      `✅ اضافه شد (${allPrompts().length.toLocaleString('fa-IR')} پرامپت در بانک)\n\n` +
+        `📌 عنوان: ${esc(item.t)}\n\n` + buildPost(item).text,
       { disable_web_page_preview: true }
+    );
+  });
+
+  bot.command('mylist', async ctx => {
+    if (!onlyAdmin(ctx)) return;
+    const list = state.custom || [];
+    if (!list.length) {
+      return ctx.replyWithHTML('📚 هنوز پرامپت سفارشی نداری.\nبا دکمه‌ی «➕ افزودن پرامپت خودم» یا دستور /addprompt اضافه کن.');
+    }
+    const lines = list
+      .slice(-15)
+      .reverse()
+      .map((p, i) => `${i + 1}. ${catOf(p.cat).emoji} <b>${esc(p.t)}</b>\n<code>${esc(String(p.prompt).slice(0, 90))}${String(p.prompt).length > 90 ? '…' : ''}</code>`)
+      .join('\n\n');
+    const rows = list.slice(-6).reverse().map(p => [Markup.button.callback('🗑 حذف: ' + String(p.t).slice(0, 22), 'pb:del:' + p.id)]);
+    await ctx.replyWithHTML(
+      `📚 <b>پرامپت‌های سفارشی تو</b> (${list.length.toLocaleString('fa-IR')} تا)\n\n${lines}`,
+      Markup.inlineKeyboard(rows)
+    );
+  });
+
+  bot.command('sample', async ctx => {
+    if (!onlyAdmin(ctx)) return;
+    const has = state.pendingSample ? '✅ یک نمونه‌کار عکس ذخیره شده و در پست بعدی استفاده می‌شود.' : 'ℹ️ الان نمونه‌کار ذخیره‌شده‌ای نداری.';
+    await ctx.replyWithHTML(
+      `🧩 <b>نمونه‌کار عکس</b>\n\n${has}\n\n` +
+        'هر عکسی (نمونه‌ی ساخته‌شده در Arena، میجورنی، فتوشاپ و…) را همین‌جا در چت بفرست؛\n' +
+        'از آن به بعد، آن عکس به‌عنوان تصویر پست‌های کانال استفاده می‌شود و ربات عکس جدید نمی‌سازد.\n' +
+        'اگر عکسی نفرستی، خود ربات برای هر پرامپت یک عکس نمونه می‌سازد.',
+      Markup.inlineKeyboard([
+        [Markup.button.callback('📮 پست فوری با همین عکس', 'pb:sample:post')],
+        [Markup.button.callback('🗑 پاک‌کردن نمونه‌کار ذخیره‌شده', 'pb:sample:clear')],
+      ])
     );
   });
 
@@ -763,21 +936,52 @@ if (!BOT_TOKEN) {
   bot.action('pb:interval', async ctx => {
     if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
     await ctx.answerCbQuery();
-    const row = [15, 30, 60, 120, 240, 360].map(m =>
-      Markup.button.callback(m < 60 ? `${m} دقیقه` : `${m / 60} ساعت`, `pb:setint:${m}`)
-    );
+    const m = state.settings.intervalMinutes;
+    const nextAt = (state.lastPostedAt || Date.now()) + m * 60 * 1000;
+    const label = x =>
+      x < 60
+        ? `${faNum(x)} دقیقه`
+        : x % 60 === 0
+          ? `${faNum(x / 60)} ساعت`
+          : `${faNum(Math.floor(x / 60))} ساعت و ${faNum(x % 60)} دقیقه`;
+    const presets = [15, 30, 45, 60, 120, 180, 240, 360, 720, 1440];
+    const row1 = presets.slice(0, 5).map(x => Markup.button.callback(label(x), `pb:setint:${x}`));
+    const row2 = presets.slice(5).map(x => Markup.button.callback(label(x), `pb:setint:${x}`));
     await ctx.replyWithHTML(
-      `⏱️ بازه‌ی فعلی: هر ${state.settings.intervalMinutes} دقیقه\nیک بازه انتخاب کن:`,
-      Markup.inlineKeyboard([row.slice(0, 3), row.slice(3)])
+      `⏱️ <b>تنظیم ساعت ارسال</b>\n\n` +
+        `بازه‌ی فعلی: هر <b>${label(m)}</b> یک پرامپت\n` +
+        `⏭️ پست بعدی: ${state.channel && !state.settings.paused ? fmtTime(nextAt) : '—'}\n\n` +
+        `یک بازه انتخاب کن، یا «✍️ بازه‌ی دلخواه» را بزن و عدد دقیقه را بفرست (۵ تا ۱۴۴۰):`,
+      Markup.inlineKeyboard([
+        row1.slice(0, 3),
+        row1.slice(3),
+        row2.slice(0, 3),
+        row2.slice(3),
+        [Markup.button.callback('✍️ بازه‌ی دلخواه (دقیقه)', 'pb:setint:custom')],
+      ])
     );
   });
 
-  bot.action(/^pb:setint:(\d+)$/, async ctx => {
+  bot.action(/^pb:setint:(\d+|custom)$/, async ctx => {
     if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
-    state.settings.intervalMinutes = Number(ctx.match[1]);
+    const val = ctx.match[1];
+    if (val === 'custom') {
+      awaitingInterval = true;
+      await ctx.answerCbQuery('عدد دقیقه را بفرست ✍️');
+      return ctx.replyWithHTML(
+        '✍️ بازه‌ی دلخواه را به <b>دقیقه</b> بنویس (بین ۵ تا ۱۴۴۰).\nمثال: <code>90</code> یعنی هر یک‌ساعت‌ونیم.',
+        WIZ_CANCEL()
+      );
+    }
+    state.settings.intervalMinutes = Number(val);
+    state.nextTryAt = 0;
     saveState(true);
-    await ctx.answerCbQuery(`⏱️ هر ${state.settings.intervalMinutes} دقیقه ✅`);
-    await ctx.editMessageText('✅ بازه‌ی ارسال تغییر کرد: هر ' + state.settings.intervalMinutes + ' دقیقه').catch(() => {});
+    const v = state.settings.intervalMinutes;
+    const label = v < 60 ? `${faNum(v)} دقیقه` : v % 60 === 0 ? `${faNum(v / 60)} ساعت` : `${faNum(Math.floor(v / 60))} ساعت و ${faNum(v % 60)} دقیقه`;
+    await ctx.answerCbQuery(`⏱️ هر ${label} ✅`);
+    await ctx.editMessageText(
+      `✅ بازه‌ی ارسال تغییر کرد: هر ${label} یک پرامپت\n⏭️ پست بعدی: ${fmtTime(Date.now() + state.settings.intervalMinutes * 60 * 1000)}`
+    ).catch(() => {});
   });
 
   bot.action('pb:toggleimg', async ctx => {
@@ -797,6 +1001,152 @@ if (!BOT_TOKEN) {
     await ctx.editMessageText(await statusText(), { parse_mode: 'HTML', ...panelKeyboard() }).catch(() => {});
   });
 
+  /* ➕ افزودن پرامپت */
+  bot.action('pb:add', async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    await ctx.answerCbQuery();
+    await startWizard(ctx);
+  });
+
+  /* 👣 گام‌های ویزارد */
+  bot.action('pb:wiz:skiptitle', async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    if (!wizard) return ctx.answerCbQuery('ویزارد منقضی شد؛ دوباره /addprompt بزن.', { show_alert: true });
+    wizard.data.t = 'پرامپت اختصاصی';
+    wizard.step = 'tip';
+    await ctx.answerCbQuery('رد شد');
+    await ctx.replyWithHTML(
+      '➕ <b>افزودن پرامپت جدید</b> (۳ از ۳)\n\nیک <b>نکته‌ی فارسی</b> بنویس یا رد کن:',
+      Markup.inlineKeyboard([
+        [Markup.button.callback('⏭️ بدون نکته', 'pb:wiz:skiptip')],
+        [Markup.button.callback('❌ لغو', 'pb:wiz:cancel')],
+      ])
+    );
+  });
+
+  bot.action('pb:wiz:skiptip', async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    if (!wizard) return ctx.answerCbQuery('ویزارد منقضی شد؛ دوباره /addprompt بزن.', { show_alert: true });
+    wizard.data.tip = '';
+    wizard.step = 'cat';
+    await ctx.answerCbQuery('رد شد');
+    await ctx.replyWithHTML('🗂️ دسته‌بندی این پرامپت را انتخاب کن:', categoryKeyboard('pb:addcat:'));
+  });
+
+  bot.action(/^pb:addcat:(.+)$/, async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    if (!wizard || !wizard.data.prompt) return ctx.answerCbQuery('ویزارد منقضی شد؛ دوباره /addprompt بزن.', { show_alert: true });
+    wizard.data.cat = ctx.match[1];
+    wizard.step = 'confirm';
+    await ctx.answerCbQuery('دسته ثبت شد ✅');
+    await ctx.replyWithHTML('👀 <b>پیش‌نمایش پرامپت تو:</b>\n\n' + wizardPreview(wizard.data), wizardConfirmKeyboard());
+  });
+
+  bot.action('pb:wiz:save', async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    if (!wizard || !wizard.data.prompt) return ctx.answerCbQuery('ویزارد منقضی شد؛ دوباره /addprompt بزن.', { show_alert: true });
+    const item = saveCustomPrompt(wizard.data);
+    wizard = null;
+    await ctx.answerCbQuery('ذخیره شد ✅');
+    await ctx.replyWithHTML(
+      `✅ پرامپت «${esc(item.t)}» ذخیره شد.\n🧠 بانک فعلی: ${allPrompts().length.toLocaleString('fa-IR')} پرامپت (${(state.custom || []).length.toLocaleString('fa-IR')} سفارشی)\n` +
+        'از این به بعد در چرخه‌ی پست‌ها هم استفاده می‌شود.',
+      panelKeyboard()
+    );
+  });
+
+  bot.action('pb:wiz:restart', async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    await ctx.answerCbQuery('از اول شروع کن');
+    await startWizard(ctx);
+  });
+
+  bot.action('pb:wiz:cancel', async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    wizard = null;
+    awaitingInterval = false;
+    await ctx.answerCbQuery('لغو شد');
+    await ctx.replyWithHTML('❌ لغو شد.', panelKeyboard());
+  });
+
+  /* 📚 پرامپت‌های من */
+  bot.action('pb:mylist', async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    await ctx.answerCbQuery();
+    const list = state.custom || [];
+    if (!list.length) {
+      return ctx.replyWithHTML('📚 هنوز پرامپت سفارشی نداری.', Markup.inlineKeyboard([[Markup.button.callback('➕ افزودن پرامپت', 'pb:add')]]));
+    }
+    const rows = list.slice(-6).reverse().map(p => [Markup.button.callback('🗑 حذف: ' + String(p.t).slice(0, 22), 'pb:del:' + p.id)]);
+    rows.push([Markup.button.callback('➕ افزودن پرامپت جدید', 'pb:add')]);
+    await ctx.replyWithHTML(
+      `📚 <b>پرامپت‌های سفارشی تو</b> (${list.length.toLocaleString('fa-IR')} تا)\nبرای حذف، دکمه‌ی مربوطه را بزن.`,
+      Markup.inlineKeyboard(rows)
+    );
+  });
+
+  bot.action(/^pb:del:(.+)$/, async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    const id = ctx.match[1];
+    const before = (state.custom || []).length;
+    state.custom = (state.custom || []).filter(p => p.id !== id);
+    state.seen = (state.seen || []).filter(x => x !== id);
+    saveState(true);
+    await ctx.answerCbQuery(before === state.custom.length ? 'پیدا نشد' : 'حذف شد 🗑');
+    await ctx.editMessageText(
+      `🗑 حذف شد. پرامپت‌های سفارشی باقی‌مانده: ${(state.custom || []).length.toLocaleString('fa-IR')}`
+    ).catch(() => {});
+  });
+
+  /* 🧩 نمونه‌کار */
+  bot.action('pb:sample', async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    await ctx.answerCbQuery();
+    const has = state.pendingSample
+      ? `✅ نمونه‌کار ذخیره‌شده (${fmtTime(new Date(state.pendingSample.addedAt).getTime())}) — در پست بعدی استفاده می‌شود.`
+      : 'ℹ️ نمونه‌کار ذخیره‌شده‌ای نداری؛ ربات خودش برای هر پرامپت عکس می‌سازد.';
+    await ctx.replyWithHTML(
+      `🧩 <b>نمونه‌کار عکس</b>\n\n${has}\n\n` +
+        'کافی است عکس نمونه‌ی خودت (ساخته‌شده در Arena، میجورنی و…) را در همین چت بفرستی.',
+      Markup.inlineKeyboard([
+        [Markup.button.callback('📮 پست فوری با همین عکس', 'pb:sample:post')],
+        [Markup.button.callback('🗑 پاک‌کردن نمونه‌کار', 'pb:sample:clear')],
+      ])
+    );
+  });
+
+  bot.action('pb:sample:keep', async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    await ctx.answerCbQuery('برای پست بعدی نگه داشته شد ✅');
+    await ctx.editMessageText('⏭️ نمونه‌کار برای پست‌های بعدی ذخیره شد.').catch(() => {});
+  });
+
+  bot.action('pb:sample:clear', async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    state.pendingSample = null;
+    saveState(true);
+    await ctx.answerCbQuery('پاک شد 🗑');
+    await ctx.editMessageText('🗑 نمونه‌کار پاک شد؛ از این به بعد عکس‌ها خودکار ساخته می‌شوند.').catch(() => {});
+  });
+
+  bot.action('pb:sample:post', async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    if (!state.channel) return ctx.answerCbQuery('اول ربات را در کانال ادمین کن 📢', { show_alert: true });
+    if (!state.pendingSample) return ctx.answerCbQuery('اول یک عکس نمونه در چت بفرست 🧩', { show_alert: true });
+    await ctx.answerCbQuery('دارم پست می‌کنم... 🎨');
+    const r = await postToChannel({ reason: 'نمونه‌کار دستی ادمین' });
+    await ctx.replyWithHTML(r.ok ? '✅ پست با عکس خودت در کانال منتشر شد.' : `❌ نشد: <code>${esc(r.reason)}</code>`);
+  });
+
+  /* 🏷️ هشتگ */
+  bot.action('pb:togglehash', async ctx => {
+    if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
+    state.settings.hashtags = !state.settings.hashtags;
+    saveState(true);
+    await ctx.answerCbQuery(state.settings.hashtags ? '🏷️ هشتگ روشن شد' : '🏷️ هشتگ خاموش شد');
+    await ctx.editMessageText(await statusText(), { parse_mode: 'HTML', ...panelKeyboard() }).catch(() => {});
+  });
+
   bot.action('pb:pause', async ctx => {
     if (!onlyAdmin(ctx)) return ctx.answerCbQuery().catch(() => {});
     state.settings.paused = !state.settings.paused;
@@ -805,10 +1155,94 @@ if (!BOT_TOKEN) {
     await ctx.editMessageText(await statusText(), { parse_mode: 'HTML', ...panelKeyboard() }).catch(() => {});
   });
 
-  /* --- پیش‌فرض --- */
+  /* --- 🧩 دریافت نمونه‌کار عکس از ادمین --- */
+  bot.on('photo', async ctx => {
+    if (ctx.chat.type !== 'private') return;
+    if (!onlyAdmin(ctx)) return;
+    const photos = ctx.message.photo || [];
+    const best = photos[photos.length - 1];
+    if (!best) return;
+    state.pendingSample = {
+      fileId: best.file_id,
+      caption: ctx.message.caption || '',
+      addedAt: new Date().toISOString(),
+    };
+    saveState(true);
+    await ctx.replyWithHTML(
+      '🧩 <b>نمونه‌کار ذخیره شد!</b>\n\n' +
+        'از این به بعد همین عکس روی پست‌های کانال می‌رود (تا وقتی عکس جدیدی بفرستی).\n' +
+        'می‌خواهی همین حالا با همین عکس یک پرامپت در کانال پست شود؟',
+      Markup.inlineKeyboard([
+        [Markup.button.callback('📮 همین حالا پست کن', 'pb:sample:post')],
+        [Markup.button.callback('⏭️ برای پست بعدی نگه دار', 'pb:sample:keep')],
+      ])
+    );
+  });
+
+  /* --- پیش‌فرض (ورودی متنی ادمین: ویزارد / بازه‌ی زمانی) --- */
   bot.on('message', async ctx => {
     if (ctx.chat.type !== 'private') return;
     if (!onlyAdmin(ctx)) return;
+    const text = String(ctx.message.text || '').trim();
+    if (!text) return;
+
+    /* بازه‌ی زمانی دلخواه */
+    if (awaitingInterval) {
+      const m = parseInt(text.replace(/[^0-9]/g, ''), 10);
+      if (!m || m < 5 || m > 1440) {
+        return ctx.replyWithHTML('یک عدد بین ۵ تا ۱۴۴۰ (دقیقه) بفرست. مثال: <code>45</code>', WIZ_CANCEL());
+      }
+      awaitingInterval = false;
+      state.settings.intervalMinutes = m;
+      saveState(true);
+      return ctx.replyWithHTML(
+        `⏱️ بازه‌ی ارسال شد: هر ${faNum(m)} دقیقه\n⏭️ پست بعدی حدوداً: ${fmtTime(Date.now() + m * 60 * 1000)}`,
+        panelKeyboard()
+      );
+    }
+
+    /* ویزارد افزودن پرامپت */
+    if (wizard) {
+      if (wizard.step === 'prompt') {
+        if (text.length < 8) return ctx.replyWithHTML('متن پرامپت خیلی کوتاه است؛ کامل‌تر بفرست 🙂', WIZ_CANCEL());
+        wizard.data.prompt = text;
+        wizard.step = 'title';
+        return ctx.replyWithHTML(
+          '➕ <b>افزودن پرامپت جدید</b> (۲ از ۳)\n\n' +
+            'یک <b>عنوان فارسی</b> برای این پرامپت بنویس (برای نمایش در بالای پست)\n' +
+            'مثال: <code>کلبه چوبی در جنگل برفی</code>',
+          Markup.inlineKeyboard([
+            [Markup.button.callback('⏭️ بدون عنوان (خودکار)', 'pb:wiz:skiptitle')],
+            [Markup.button.callback('❌ لغو', 'pb:wiz:cancel')],
+          ])
+        );
+      }
+      if (wizard.step === 'title') {
+        wizard.data.t = text.slice(0, 60);
+        wizard.step = 'tip';
+        return ctx.replyWithHTML(
+          '➕ <b>افزودن پرامپت جدید</b> (۳ از ۳)\n\n' +
+            'یک <b>نکته‌ی فارسی</b> بنویس (زیر پست نمایش داده می‌شود؛ مثلاً چه چیزی را در پرامپت عوض کنند).\n' +
+            'مثال: <code>کلمه‌ی snowy را به rainy تغییر بده تا حس پاییزی بگیرد.</code>',
+          Markup.inlineKeyboard([
+            [Markup.button.callback('⏭️ بدون نکته', 'pb:wiz:skiptip')],
+            [Markup.button.callback('❌ لغو', 'pb:wiz:cancel')],
+          ])
+        );
+      }
+      if (wizard.step === 'tip') {
+        wizard.data.tip = text.slice(0, 200);
+        wizard.step = 'cat';
+        return ctx.replyWithHTML('🗂️ دسته‌بندی این پرامپت را انتخاب کن:', categoryKeyboard('pb:addcat:'));
+      }
+      if (wizard.step === 'cat') {
+        return ctx.replyWithHTML('🗂️ لطفاً از دکمه‌های بالا یک دسته انتخاب کن (یا «بدون دسته»).');
+      }
+      if (wizard.step === 'confirm') {
+        return ctx.replyWithHTML('برای ذخیره، دکمه‌ی «✅ ذخیره در بانک» را بزن.', wizardConfirmKeyboard());
+      }
+    }
+
     await ctx.replyWithHTML('متوجه نشدم 🤔 از پنل استفاده کن یا /help را بزن.', panelKeyboard());
   });
 

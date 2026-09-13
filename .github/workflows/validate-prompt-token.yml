@@ -1,0 +1,52 @@
+name: Validate Prompt Bot Token
+
+# این ورک‌فلو فقط برای بررسی اتصال ربات پرامپت به تلگرام است (توکن را چاپ نمی‌کند).
+on:
+  push:
+    paths:
+      - '.github/workflows/validate-prompt-token.yml'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: getMe (bot identity)
+        run: |
+          TOKEN=$(node -e "console.log(require('./prompt-bot/index.js') ? '' : '');" 2>/dev/null || true)
+          TOKEN=$(node -e "
+            const fs=require('fs');
+            const src=fs.readFileSync('prompt-bot/index.js','utf8');
+            const m=src.match(/DEFAULT_PROMPT_TOKEN\s*=\s*'([^']+)'/);
+            process.stdout.write(m ? m[1] : (process.env.PROMPT_BOT_TOKEN || ''));
+          ")
+          if [ -z "$TOKEN" ]; then echo "::error::توکنی پیدا نشد (نه در کد، نه در سکرت)"; exit 1; fi
+          echo "::add-mask::$TOKEN"
+          CODE=$(curl -s -o /tmp/me.json -w '%{http_code}' "https://api.telegram.org/bot$TOKEN/getMe")
+          echo "HTTP $CODE"
+          cat /tmp/me.json
+          node -e "
+            const r=require('/tmp/me.json');
+            if(!r.ok){ console.error('❌ توکن معتبر نیست:', r.description); process.exit(1); }
+            console.log('✅ ربات متصل است → @' + r.result.username + ' (نام: ' + r.result.first_name + ')');
+            console.log('🔗 لینک: https://t.me/' + r.result.username);
+          "
+
+      - name: Launch bot for 45s and show startup log
+        env:
+          PROMPT_BOT_TOKEN: ${{ secrets.PROMPT_BOT_TOKEN }}
+        run: |
+          timeout 45 node -e "
+            require('./prompt-bot/index.js');
+            setTimeout(()=>process.exit(0), 40000);
+          " 2>&1 | head -40 || true

@@ -563,7 +563,8 @@ const HELP_TEXT =
   `/mylist — دیدن و حذف‌کردن پرامپت‌های خودت\n` +
   `/sample — راهنمای نمونه‌کار عکس\n` +
   `/stats — آمار\n` +
-  `/channel — وضعیت و راهنمای اتصال کانال`;
+  `/channel — وضعیت کانال\n` +
+  `/connect @channel — اتصال دستی کانال (اگر خودکار تشخیص داده نشد)`;
 
 function onlyAdmin(ctx) {
   const id = String(ctx.from && ctx.from.id);
@@ -686,6 +687,48 @@ if (!BOT_TOKEN) {
         ? `📢 کانال متصل: <b>${esc(ch.title)}</b>${ch.username ? ` (@${esc(ch.username)})` : ''}\nآی‌دی: <code>${esc(ch.id)}</code>\nاز ${fmtTime(new Date(ch.addedAt).getTime())}`
         : '📢 هنوز به کانالی وصل نیستم.\n\nراهنما:\n۱) ربات را با نام کاربری‌اش در کانال اضافه کن\n۲) در لیست اعضا، <b>Administrator</b> کن و اجازه‌ی Post Messages بده\n۳) همین‌جا /status بزن — کانال خودکار ثبت می‌شه'
     );
+  });
+
+  bot.command('connect', async ctx => {
+    if (!onlyAdmin(ctx)) return;
+    const arg = String(ctx.message.text).split(/\s+/)[1];
+    if (!arg) {
+      return ctx.replyWithHTML(
+        '📢 <b>اتصال دستی کانال</b>\n\n' +
+          'اگر ربات را در کانال ادمین کردی ولی خودکار تشخیص داده نشد، این‌طوری وصلش کن:\n' +
+          '<code>/connect @my_channel</code>\nیا با آیدی عددی کانال:\n<code>/connect -1001234567890</code>\n\n' +
+          '⚠️ ربات باید در آن کانال <b>ادمین با اجازه‌ی ارسال پیام</b> باشد.'
+      );
+    }
+    await ctx.replyWithHTML('⏳ دارم کانال را بررسی می‌کنم...');
+    try {
+      const chat = await bot.telegram.getChat(arg);
+      if (chat.type !== 'channel' && chat.type !== 'supergroup') {
+        return ctx.replyWithHTML('⚠️ این مورد کانال/سوپرگروپ نیست.');
+      }
+      state.channel = {
+        id: chat.id,
+        title: chat.title || chat.username || String(chat.id),
+        username: chat.username || '',
+        type: chat.type,
+        addedAt: new Date().toISOString(),
+      };
+      if (!state.lastPostedAt) {
+        state.lastPostedAt = Date.now() - state.settings.intervalMinutes * 60 * 1000 + 60 * 1000;
+      }
+      saveState(true);
+      startScheduler();
+      await ctx.replyWithHTML(
+        `✅ کانال وصل شد: <b>${esc(state.channel.title)}</b>${state.channel.username ? ` (@${esc(state.channel.username)})` : ''}\n` +
+          `⏱️ از این به بعد هر ${faNum(state.settings.intervalMinutes)} دقیقه یک پرامپت پست می‌شود.`,
+        panelKeyboard()
+      );
+    } catch (e) {
+      const hint = /chat not found|not enough rights|Forbidden/i.test(e.message)
+        ? '\n\n⚠️ احتمالاً ربات در آن کانال ادمین نیست. اول ادمینش کن، بعد دوباره تلاش کن.'
+        : '';
+      await ctx.replyWithHTML(`❌ نشد: <code>${esc(e.message)}</code>${hint}`);
+    }
   });
 
   bot.command('postnow', async ctx => {
@@ -1256,7 +1299,26 @@ if (!BOT_TOKEN) {
     .then(async () => {
       console.log('✅ ' + BOT_NAME + ' فعال شد.');
       if (state.channel) {
-        console.log(`[prompt-bot] کانال متصل: ${state.channel.title} (${state.channel.id})`);
+        // کانال ذخیره‌شده را بررسی کن: اگر دیگر دسترسی نداریم، پاکش کن
+        try {
+          const chat = await bot.telegram.getChat(state.channel.id);
+          state.channel = {
+            ...state.channel,
+            title: chat.title || state.channel.title,
+            username: chat.username || state.channel.username || '',
+          };
+          saveState();
+          console.log(`[prompt-bot] کانال متصل: ${state.channel.title} (${state.channel.id})`);
+        } catch (e) {
+          console.error('[prompt-bot] دسترسی به کانال ذخیره‌شده ممکن نیست:', e.message);
+          const lost = state.channel;
+          state.channel = null;
+          saveState(true);
+          await notifyAdmin(
+            `⚠️ به کانال «${esc(lost.title)}» دسترسی ندارم (احتمالاً ربات ادمین نیست).\n` +
+              'ربات را در کانال ادمین کن (اجازه‌ی Post Messages) تا خودکار وصل شود.'
+          );
+        }
         startScheduler();
       } else if (PRESET_CHANNEL) {
         state.channel = { id: PRESET_CHANNEL, title: PRESET_CHANNEL, username: '', type: 'channel', addedAt: new Date().toISOString() };

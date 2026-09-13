@@ -22,6 +22,7 @@ const zlib = require('zlib');
 
 const PORT = Number(process.argv[2] || 8043);
 const BAD_CHAT_ID = -1000000000001; // چتی که شبیه‌ساز برایش خطا می‌دهد (تست سناریوی خطا)
+const CHANNEL_ID = -1001234567890; // کانال تستی
 
 /* ───────── ساخت یک PNG واقعی ۶۴×۶۴ (بدون وابستگی خارجی) ───────── */
 
@@ -173,6 +174,18 @@ const server = http.createServer((req, res) => {
 
     if (method === 'getMe') {
       return json(ok({ id: 1, is_bot: true, first_name: 'PromptBot', username: 'prompt_test_bot' }));
+    }
+
+    if (method === 'getChat') {
+      let payload = {};
+      try { payload = JSON.parse(body.toString('utf8') || '{}'); } catch (e) { /* ignore */ }
+      const target = String(payload.chat_id || '');
+      sent.push({ method, chat_id: target });
+      if (target.includes('not_found') || target === '0' || target === BAD_CHAT_ID) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(err('Bad Request: chat not found'));
+      }
+      return json(ok({ id: CHANNEL_ID, type: 'channel', title: 'کانال پرامپت تست', username: 'prompt_test_ch' }));
     }
 
     if (method === 'getUpdates') {

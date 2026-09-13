@@ -342,6 +342,24 @@ const cb = (data) => ({
   s = await sent();
   check('دستور /interval بدون عدد راهنما می‌دهد', s.some(m => /۵ تا ۱۴۴۰/.test(m.text || '')));
 
+  /* ── ۱۸) اتصال دستی کانال با /connect ── */
+  const keepChannel = st.channel;
+  st.channel = null;
+  await post('/_reset', {});
+  await inject(msg('/connect'));
+  await sleep(700);
+  s = await sent();
+  check('دستور /connect بدون آرگومان راهنما می‌دهد', s.some(m => /اتصال دستی کانال/.test(m.text || '')));
+  await inject(msg('/connect @prompt_test_ch'));
+  await sleep(1200);
+  check('اتصال دستی کانال کار می‌کند', !!(st.channel && st.channel.username === 'prompt_test_ch'), JSON.stringify(st.channel));
+  await post('/_reset', {});
+  await inject(msg('/connect @not_found'));
+  await sleep(1000);
+  s = await sent();
+  check('خطای /connect مدیریت می‌شود', s.some(m => /❌ نشد/.test(m.text || '')));
+  st.channel = keepChannel;
+
   /* ── نتیجه ── */
   console.log('\n──────── نتیجه‌ی تست ────────');
   console.log(results.join('\n'));
